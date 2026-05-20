@@ -9,14 +9,11 @@
 #include <cstdint>
 #include <ctime>
 #include <fnmatch.h>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
-
-constexpr uint64_t BASE = 1024;
 
 namespace {
 std::string FormatTime(const std::time_t &time) {
