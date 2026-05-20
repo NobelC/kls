@@ -1,5 +1,4 @@
 #include "../../include/core-hpp/validator.hpp"
-// #include "../../include/command/command-implementation.hpp"
 #include "../../include/error/error_hanlder.hpp"
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
@@ -30,10 +29,9 @@ bool DATE_VALIDATED(const std::string_view &date_str) {
 }
 
 bool SIZE_VALIDATED(std::string_view size_str) {
-  // El formato para el tamano de archivos es variado
-  // 1028 MB | 1028 gb
-  // para valores numericos (1028) sin especificar medida se usaran los MB como
-  // estandar
+//The format for file sizes is varied = 1028MB or 1028GB
+//For values that are numeric (1028) without specifying the
+//unit, we use MB as the standard.  
   if (size_str.empty()) {
     return false;
   }

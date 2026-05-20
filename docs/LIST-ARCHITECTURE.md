@@ -97,62 +97,62 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | `--min-severity=N`        |       | Only alerts of level N or higher (1, 2, 3)    |      | 
 
 ### Security — Analysis
-| Option | Alias | Description | Status |
-| :--- | :--- | :--- |----- |
-| `--health` | | Enabled by default — full health analysis |      |
-| `--no-health` | | Disable health analysis |      |
-| `--capabilities` | | Show Linux capabilities per entry |      |
-| `--acl` | | Show extended ACLs if they exist |      |
-| `--attack-surface` | | Summary of the directory's attack surface |      |
-| `--timeline` | | Temporal anomaly analysis |      |
-| `--duplicates` | | Detect files with identical content |      |
-| `--sticky` | | Explicitly mark sticky bit |      |
-| `--immutable` | | Detect files with immutable flag (chattr +i) |      |
-| `--setuid-tree` | | List all SUIDs in the recursive tree |      |
-| `--world-tree` | | List all world-writable in the tree |      |
+| Option             | Alias | Description                                  | Status |
+| :----------------- | :---- | :------------------------------------------- |------- |
+| `--health`         |       | Enabled by default — full health analysis    |        |
+| `--no-health`      |       | Disable health analysis                      |        |
+| `--capabilities`   |       | Show Linux capabilities per entry            |        |
+| `--acl`            |       | Show extended ACLs if they exist             |        |
+| `--attack-surface` |       | Summary of the directory's attack surface    |        |
+| `--timeline`       |       | Temporal anomaly analysis                    |        |
+| `--duplicates`     |       | Detect files with identical content          |        |
+| `--sticky`         |       | Explicitly mark sticky bit                   |        |
+| `--immutable`      |       | Detect files with immutable flag (chattr +i) |        |
+| `--setuid-tree`    |       | List all SUIDs in the recursive tree         |        |
+| `--world-tree`     |       | List all world-writable in the tree          |        |
 
 ### Sorting
-| Option | Alias | Description | Status |
-| :--- | :--- | :--- |----|
-| `--sort=name` | | By name (default) |      |
-| `--sort=size` | | By size |      |
-| `--sort=date` | | By modification date |      |
-| `--sort=ext` | | By extension |      |
-| `--sort=type` | | Directories first |      |
-| `--sort=severity` | | By security alert level |      |
-| `--sort=owner` | | By owner |      |
-| `--reverse` | | Reverse order |      |
-| `--dirs-first` | | Directories always first |      |
-| `--alerts-first` | | Entries with alerts always first |      |
+| Option            | Alias | Description                      | Status |
+| :---------------- | :---- | :------------------------------- |------- |
+| `--sort=name`     |       | By name (default)                |        |
+| `--sort=size`     |       | By size                          |        |
+| `--sort=date`     |       | By modification date             |        |
+| `--sort=ext`      |       | By extension                     |        |
+| `--sort=type`     |       | Directories first                |        |
+| `--sort=severity` |       | By security alert level          |        |
+| `--sort=owner`    |       | By owner                         |        |
+| `--reverse`       |       | Reverse order                    |        |
+| `--dirs-first`    |       | Directories always first         |        |
+| `--alerts-first`  |       | Entries with alerts always first |        |
 
 ### Presentation
-| Option | Alias | Description | Status |
-| :--- | :--- | :--- |----|
-| `--long` | `-l` | Full metadata per entry |      |
-| `--no-header` | | Suppress headers in `--long` |      |
-| `--tree` | | Hierarchical view |      |
-| `--grid` | | Multiple columns |      |
-| `--compact` | | Names only, maximum density|      |
-| `--summary` | | Statistics only, without listing entries |       |
-| `--security-report` | | Consolidated security report at the end |      |
-| `--no-color` | | No ANSI colors |      |
-| `--no-icons` | | No alert symbols |      |
-| `--inode` | | Show inode number |      |
-| `--nlinks` | | Show number of hardlinks |      |
-| `--blocks` | | Show disk blocks used |      |
-| `--octal` | | Show permissions in octal besides symbolic |      |
-| `--numeric-ids` | | Show numeric UID/GID instead of names |      |
-| `--full-path` | | Show full absolute path |      |
-| `--timestamp=mtime` | | Which timestamp to show: mtime, ctime, btime |      |
-| `--time-format=iso` | | Time format: iso, relative, epoch |      |
+| Option              | Alias | Description                                  | Status |
+| :------------------ | :---  | :--------------------------------------------|------  |
+| `--long`            | `-l`  | Full metadata per entry                      |        |
+| `--no-header`       |       | Suppress headers in `--long`                 |        |
+| `--tree`            |       | Hierarchical view                            |        |
+| `--grid`            |       | Multiple columns                             |        |
+| `--compact`         |       | Names only, maximum density                  |        |
+| `--summary`         |       | Statistics only, without listing entries     |        |
+| `--security-report` |       | Consolidated security report at the end      |        |
+| `--no-color`        |       | No ANSI colors                               |        |
+| `--no-icons`        |       | No alert symbols                             |        |
+| `--inode`           |       | Show inode number                            |        |
+| `--nlinks`          |       | Show number of hardlinks                     |        |
+| `--blocks`          |       | Show disk blocks used                        |        |
+| `--octal`           |       | Show permissions in octal besides symbolic   |        |
+| `--numeric-ids`     |       | Show numeric UID/GID instead of names        |        |
+| `--full-path`       |       | Show full absolute path                      |        |
+| `--timestamp=mtime` |       | Which timestamp to show: mtime, ctime, btime |        |
+| `--time-format=iso` |       | Time format: iso, relative, epoch            |        |
 
 ### Structured Output
-| Option | Alias | Description | Status |
-| :--- | :--- | :--- |----|
-| `--format=json` | | Parseable JSON output |      |
-| `--format=csv` | | CSV output |      |
-| `--format=ndjson` | | One JSON object per line |      |
-| `--fields=name,size` | | Fields to include in structured output |      |
+| Option               | Alias | Description                            | Status |
+| :------------------- | :---- | :------------------------------------- |------- |
+| `--format=json`      |       | Parseable JSON output                  |        |
+| `--format=csv`       |       | CSV output                             |        |
+| `--format=ndjson`    |       | One JSON object per line               |        |
+| `--fields=name,size` |       | Fields to include in structured output |        |
 
 ### System
 | Option         | Alias | Description                        | Status |

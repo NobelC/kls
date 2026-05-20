@@ -1,17 +1,22 @@
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
-#include "token/token-raw-metadata.hpp"
+#include "../../include/token/token-raw-metadata.hpp"
 #include <algorithm>
 #include <any>
+#include <array>
+#include <charconv>
 #include <cstddef>
+#include <cstdint>
 #include <ctime>
 #include <fnmatch.h>
-#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
+
+constexpr uint64_t BASE = 1024;
 
 namespace {
 std::string FormatTime(const std::time_t &time) {
@@ -23,6 +28,54 @@ std::string FormatTime(const std::time_t &time) {
   }
   return "0000-00-00";
 }
+
+uint64_t FormatSize(const std::string_view size) {
+  if (size.empty()) {
+    return 0;
+  }
+  uint64_t digits = 0;
+  auto [ptr, ec] =
+      std::from_chars(size.data(), size.data() + size.size(), digits);
+
+  if (ec == std::errc::result_out_of_range) {
+    return UINT64_MAX;
+  }
+  if (ec != std::errc{} || ptr == size.data()) {
+    return 0;
+  }
+
+  std::string_view sufix(ptr, size.data() + size.size());
+  uint64_t multiplier = 1;
+
+  if (sufix.empty()) {
+    multiplier = 1024ULL * 1024;
+    if (digits > UINT64_MAX / multiplier) {
+      return UINT64_MAX;
+    }
+    return digits * multiplier;
+  }
+
+  if (sufix == "B" || sufix == "b") {
+    multiplier = 1;
+  } else if (sufix == "KB" || sufix == "kb") {
+    multiplier = 1024ULL;
+  } else if (sufix == "MB" || sufix == "mb") {
+    multiplier = 1024ULL * 1024;
+  } else if (sufix == "GB" || sufix == "gb") {
+    multiplier = 1024ULL * 1024 * 1024;
+  } else if (sufix == "TB" || sufix == "tb") {
+    multiplier = 1024ULL * 1024 * 1024 * 1024;
+  } else {
+    return 0;
+  }
+
+  if (digits > UINT64_MAX / multiplier) {
+    return UINT64_MAX;
+  }
+
+  return digits * multiplier;
+}
+
 } // namespace
 
 void CreatedOptionData() {
@@ -222,6 +275,30 @@ void CreatedOptionData() {
                   });
   });
   GeneralOptionLog(extension);
+
+  OptionMetaData larger_than;
+  larger_than.normalized_name = "--larger-than";
+  larger_than.data_type = TypeDataReceived::SIZE;
+  larger_than.category = OptionCategory::FILTERING;
+  larger_than.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
+    const auto *size_raw =
+        std::any_cast<std::string_view>(&filter_contex.context);
+    if (!size_raw) {
+      return;
+    }
+
+    const std::string_view size_num = *size_raw;
+    if (size_num.empty()) {
+      return;
+    }
+
+    const auto size = FormatSize(size_num);
+
+    std::erase_if(filter_contex.entries,
+                  [&size](const FileEntry &e) { return !(size <= e.size); });
+  });
+  GeneralOptionLog(larger_than);
+
   // --- ORDENAMIENTO (SORTING) ---
 
   OptionMetaData sort;
