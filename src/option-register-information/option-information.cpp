@@ -296,6 +296,29 @@ void CreatedOptionData() {
   });
   GeneralOptionLog(larger_than);
 
+  OptionMetaData smaller_than;
+  smaller_than.normalized_name = "--smaller-than";
+  smaller_than.data_type = TypeDataReceived::SIZE;
+  smaller_than.category = OptionCategory::FILTERING;
+  smaller_than.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
+    const auto *size_raw =
+        std::any_cast<std::string_view>(&filter_contex.context);
+    if (!size_raw) {
+      return;
+    }
+
+    const std::string_view size_num = *size_raw;
+    if (size_num.empty()) {
+      return;
+    }
+
+    const auto size = FormatSize(size_num);
+
+    std::erase_if(filter_contex.entries,
+                  [&size](const FileEntry &e) { return !(size >= e.size); });
+  });
+  GeneralOptionLog(smaller_than);
+
   // --- ORDENAMIENTO (SORTING) ---
 
   OptionMetaData sort;
