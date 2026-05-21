@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
-#include <cstdint>
 #include <cstdio>
 #include <dirent.h>
 #include <fcntl.h>
@@ -146,13 +145,29 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     }
 
     // 3. Tiempo
-    std::string time_str = std::format(
-        "{:%b %d %H:%M}", std::chrono::system_clock::from_time_t(e.mtime));
+    std::string time_str = std::format("{:%b %d %H:%M}", std::chrono::system_clock::from_time_t(e.mtime));
     // 4. Tamaño (Manejo del valor centinela MAX que definimos)
-    std::string size_str = (e.size == std::numeric_limits<uint64_t>::max())
-                               ? "-"
-                               : std::to_string(e.size);
-
+    std::string size_str;
+    auto size_final = e.size;
+    if(e.size > 0 && e.size < 1024){
+      size_str = std::to_string(e.size) + "B";
+    }
+    else if(e.size < 1048576){
+      size_final /= 1024;
+      size_str = std::to_string(size_final) + "KB";
+    }
+    else if(e.size < 1073741824){
+      size_final /= 1048576;
+      size_str = std::to_string(size_final) + "MB";
+    }
+    else if(e.size < 1099511627776){
+      size_final /= 1073741824;
+      size_str = std::to_string(size_final) + "GB";
+    }
+    else{
+      size_final /=  1099511627776;
+      size_str = std::to_string(size_final) + "TB";
+    }
     // Renderizado Final
     std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} ", perms,
                              e.nlinks, owner, group_str, size_str, time_str);
