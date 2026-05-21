@@ -68,11 +68,11 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | Option                             | Alias | Description                     |Status|
 | :--------------------------------- | :---  | :------------------------------ |------|
 | `--ext=cpp,hpp`                    |       | Filter by extensions            |  ✅  |
-| `--larger-than=N`                  |       | Files larger than N (1KB, 2MB)  |      |
-| `--smaller-than=N`                 |       | Files smaller than N            |      |
+| `--larger-than=N`                  |       | Files larger than N (1KB, 2MB)  |  ✅  |
+| `--smaller-than=N`                 |       | Files smaller than N            |  ✅  |
 | `--modified-after=YEAR-MONTH-DAY`  |       | Modified in the last N days     |  ✅  |
 | `--modified-before=YEAR-MONTH-DAY` |       | Modified more than N days ago   |  ✅  |
-| `--name=pattern`                   |       | Filter by glob name pattern     |      |
+| `--name=pattern`                   |       | Filter by glob name pattern     |  ✅  |
 | `--owner=user`                     |       | Filter by owner                 |      |
 | `--group=group`                    |       | Filter by group                 |      |
 | `--min-links=N`                    |       | Files with at least N hardlinks |      |
