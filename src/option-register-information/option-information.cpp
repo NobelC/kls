@@ -11,6 +11,8 @@
 #include <fnmatch.h>
 #include <string>
 #include <string_view>
+#include <sys/types.h>
+#include <system_error>
 #include <tuple>
 #include <unordered_set>
 #include <vector>
@@ -369,6 +371,29 @@ GeneralOptionLog(owner_filter);
     });
   });
   GeneralOptionLog(group_filter);
+
+  OptionMetaData min_links;
+  min_links.normalized_name = "--min-links"; // Corregido el nombre de la opción
+  min_links.data_type = TypeDataReceived::STRING;
+  min_links.category = OptionCategory::FILTERING;
+  min_links.hanlder = FilteringProcess([](FilterStruct &filter_contex){
+      const auto* min_link_raw = std::any_cast<std::string_view>(&filter_contex.context);
+      if(!min_link_raw || min_link_raw->empty()){
+        return;
+      }
+      nlink_t n_link = 0;
+      auto [ptr,ercc] = std::from_chars(min_link_raw->data(), min_link_raw->data() + min_link_raw->size(), n_link);
+      if(ercc != std::errc{}){
+        return;
+      }
+      std::erase_if(filter_contex.entries, [n_link](const FileEntry& e){
+          return n_link > e.nlinks; 
+          });
+      });
+  GeneralOptionLog(min_links);
+
+ 
+
   // --- ORDENAMIENTO (SORTING) ---
 
   OptionMetaData sort;
