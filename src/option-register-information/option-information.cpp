@@ -14,6 +14,8 @@
 #include <tuple>
 #include <unordered_set>
 #include <vector>
+#include <pwd.h>
+#include <grp.h>
 
 namespace {
 std::string FormatTime(const std::time_t &time) {
@@ -319,6 +321,54 @@ void CreatedOptionData() {
   });
   GeneralOptionLog(smaller_than);
 
+
+OptionMetaData owner_filter;
+owner_filter.normalized_name = "--owner";
+owner_filter.data_type = TypeDataReceived::STRING;
+owner_filter.category = OptionCategory::FILTERING;
+owner_filter.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
+  const auto *owner_raw = std::any_cast<std::string_view>(&filter_contex.context);
+  if (!owner_raw || owner_raw->empty()) {
+    return;
+  }
+
+  const std::string_view owner = *owner_raw;
+  static std::unordered_map<uid_t, std::string> cache_owner; 
+
+  std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
+    auto it = cache_owner.find(e.uid);
+    if (it == cache_owner.end()) {
+      const struct passwd *pw = getpwuid(e.uid);
+      it = cache_owner.insert({e.uid, pw ? std::string(pw->pw_name) : "UNKNOWN"}).first;
+    }
+    return it->second != owner;
+  });
+});
+GeneralOptionLog(owner_filter);
+  
+  OptionMetaData group_filter;
+  group_filter.normalized_name = "--group"; // Corregido el nombre de la opción
+  group_filter.data_type = TypeDataReceived::STRING;
+  group_filter.category = OptionCategory::FILTERING;
+  group_filter.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
+  const auto *group_raw = std::any_cast<std::string_view>(&filter_contex.context);
+  if (!group_raw || group_raw->empty()) {
+    return;
+  }
+
+  const std::string_view group = *group_raw;
+  static std::unordered_map<gid_t, std::string> cache_group; // Corregido uid_t -> gid_t
+
+  std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
+    auto it = cache_group.find(e.gid);
+    if (it == cache_group.end()) {
+      const struct group *gp = getgrgid(e.gid); // Añadido struct explicitamente
+      it = cache_group.insert({e.gid, gp ? std::string(gp->gr_name) : "UNKNOWN"}).first;
+    }
+    return it->second != group;
+    });
+  });
+  GeneralOptionLog(group_filter);
   // --- ORDENAMIENTO (SORTING) ---
 
   OptionMetaData sort;
