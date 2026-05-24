@@ -145,7 +145,7 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
       }
       if(!cache_owner.contains(fe.uid)){
         errno = 0;
-        passwd *pw = getpwuid(fe.uid);
+       const passwd *pw = getpwuid(fe.uid);
         if(pw){
           cache_owner[fe.uid] = cache_owner[fe.uid] = pw->pw_name;
         }
@@ -162,7 +162,7 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
 
       if(!cache_group.contains(fe.gid)){
         errno = 0;
-        group *gp = getgrgid(fe.gid);
+        const group *gp = getgrgid(fe.gid);
         if(gp){
           cache_group[fe.gid] = cache_group[fe.gid] = gp->gr_name;
         }
