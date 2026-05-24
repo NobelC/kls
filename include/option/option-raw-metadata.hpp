@@ -45,7 +45,7 @@ enum class OptionCategory : std::uint8_t {
 // Todas las opciones que operan sobre el listado de entradas del filesystem
 struct HealthFlag {
   std::string code; // "symlink_broken", "world_writable", etc.
-  int level;        // 1=info, 2=medium, 3=high
+  uint8_t level;        // 1=info, 2=medium, 3=high
 };
 
 struct FileEntry {

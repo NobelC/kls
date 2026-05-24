@@ -17,6 +17,7 @@
 #include <linux/limits.h>
 #include <linux/stat.h>
 #include <mutex>
+#include <numeric>
 #include <pwd.h>
 #include <queue>
 #include <string>
@@ -30,6 +31,7 @@
 
 namespace {
 constexpr unsigned int MAX_THREAD = 10;
+constexpr unsigned int MAX_LENGTH = 30;
 static std::unordered_map<uid_t, std::string> cache_owner;
 static std::unordered_map<gid_t, std::string> cache_group;
 
@@ -41,6 +43,7 @@ struct Option {
   bool follow_symlink : 1;
   bool capabilities : 1;
   bool needs_metadata : 1;
+  bool healt : 1;
 };
 
 struct PendingDir {
@@ -49,7 +52,7 @@ struct PendingDir {
 };
 
 void LongRecolection(FileEntry &fe, const std::string &full_path,
-                     const dirent *entry, std::string_view current_path) {
+                     const dirent *entry, std::string_view current_path, const Option& health ) {
   // Inicialización de seguridad para evitar valores basura en bitfields y metadatos
   fe.inode = 0;
   fe.size = 0;
@@ -96,6 +99,80 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
         dot_pos != std::string_view::npos && dot_pos > 0) {
       fe.extension = std::string(name_view.substr(dot_pos));
     }
+    if(health.healt){
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "SUID bit set — executes as file owner",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISGID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "SGID bit set — executes as file group",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_IWOTH){
+        fe.health.emplace_back(HealthFlag{
+            .code = "world-writable — any user can modify this file",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+        if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+      if(stx.stx_mode & S_ISUID){
+        fe.health.emplace_back(HealthFlag{
+            .code = "--",
+            .level = 3,
+            });
+      }
+    }
   }
 }
 
@@ -106,10 +183,10 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
   }
 
   // Encabezado (si no se activó --no-header)
-  std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {}\n",
+  std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n",
                            "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
-                           "NAME");
-  std::cout << std::string(80, '-') << "\n";
+                           "NAME", "ALERTS");
+  std::cout << std::string(120, '-') << "\n";
 
   for (const auto &e : entries) {
     // 1. Permisos (Modo)
@@ -148,36 +225,58 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     std::string time_str = std::format("{:%b %d %H:%M}", std::chrono::system_clock::from_time_t(e.mtime));
     // 4. Tamaño (Manejo del valor centinela MAX que definimos)
     std::string size_str;
-    auto size_final = e.size;
-    if(e.size > 0 && e.size < 1024){
-      size_str = std::to_string(e.size) + "B";
+    auto size_final = static_cast<double>(e.size);
+    if((e.size == 0 ) || (e.size > 0 && e.size < 1024)){
+      size_str = std::format("{:.2f} B",size_final);
     }
     else if(e.size < 1048576){
-      size_final /= 1024;
-      size_str = std::to_string(size_final) + "KB";
+      size_final /= 1024.0;
+      size_str = std::format("{:.2f} KB",size_final);
     }
     else if(e.size < 1073741824){
-      size_final /= 1048576;
-      size_str = std::to_string(size_final) + "MB";
+      size_final /= 1048576.0;
+      size_str = std::format("{:.2f} MB",size_final);
     }
     else if(e.size < 1099511627776){
-      size_final /= 1073741824;
-      size_str = std::to_string(size_final) + "GB";
+      size_final /= 1073741824.0;
+      size_str = std::format("{:.2f} GB",size_final);
     }
     else{
-      size_final /=  1099511627776;
-      size_str = std::to_string(size_final) + "TB";
+      size_final /=  1099511627776.0;
+      size_str = std::format("{:.2f} TB",size_final);   
+    }
+    
+    auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
+        [](const std::string& acc, const HealthFlag& s){
+          return acc.empty() ? s.code : acc + " | " + s.code; 
+        });
+    if (join_alert.empty()){
+      join_alert = "-----------";
+    }
+   
+    std::string display_name = e.name;
+    if(MAX_LENGTH < display_name.size()){
+      display_name = display_name.substr(0,MAX_LENGTH -3) + "...";
+    }
+    
+    auto pading_size = MAX_LENGTH - static_cast<unsigned int>(display_name.size());
+    std::string padding = pading_size > 0 ? std::string(pading_size, ' ') : "" ;
+
+
+    std::string one_str = "\033[1;34m";
+    std::string last_str = "\033[0m";
+    std::string formatted_name;
+    formatted_name.reserve(display_name.size() + one_str.size() + last_str.size());
+    // Color para el nombre si es directorio
+    if(e.is_directory){
+      formatted_name.append(one_str).append(display_name).append(last_str).append(padding);
+    } 
+    else{
+      formatted_name = display_name;
     }
     // Renderizado Final
-    std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} ", perms,
-                             e.nlinks, owner, group_str, size_str, time_str);
-
-    // Color para el nombre si es directorio
-    if (e.is_directory) {
-      std::cout << "\033[1;34m" << e.name << "\033[0m\n";
-    } else {
-      std::cout << e.name << "\n";
-    }
+    std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
+                             e.nlinks, owner, group_str, size_str, time_str, formatted_name, join_alert);
   }
 }
 } // namespace
@@ -205,7 +304,10 @@ void LIST_HANDLER(const GroupToken &token_group) {
           std::ranges::any_of(token_group.options, [](const auto &t) {
             return t.name == "--capabilities";
           }),
-      .needs_metadata = false};
+      .needs_metadata = false,
+      .healt = std::ranges::any_of(token_group.options, [](const auto& t){
+          return t.name == "--health";
+          })};
 
   options_bool.needs_metadata =
       options_bool.long_format ||
@@ -307,7 +409,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
           full_path += name;
 
           FileEntry entry_data;
-          LongRecolection(entry_data, full_path, entry, current.path);
+          LongRecolection(entry_data, full_path, entry, current.path, options_bool);
 
           if (entry_data.is_directory && options_bool.recursive &&
               current.depth < depth_limit) {
