@@ -217,7 +217,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     if (cache_owner.contains(e.uid)) {
       owner = cache_owner.at(e.uid);
     } else {
-      passwd *pw = getpwuid(e.uid);
+     const passwd *pw = getpwuid(e.uid);
       owner = pw ? pw->pw_name : "UNKNOWN";
       cache_owner[e.uid] = owner;
     }
@@ -225,7 +225,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     if (cache_group.contains(e.gid)) {
       group_str = cache_group.at(e.gid);
     } else {
-      group *gp = getgrgid(e.gid);
+      const group *gp = getgrgid(e.gid);
       group_str = gp ? gp->gr_name : "UNKNOWN";
       cache_group[e.gid] = group_str;
     }
