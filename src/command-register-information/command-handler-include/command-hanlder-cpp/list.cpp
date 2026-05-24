@@ -4,6 +4,7 @@
 #include "../../../../include/token/token-raw-metadata.hpp"
 #include <algorithm>
 #include <atomic>
+#include <cerrno>
 #include <condition_variable>
 #include <cstdio>
 #include <dirent.h>
@@ -28,10 +29,12 @@
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
+#include <ctime>
 
 namespace {
 constexpr unsigned int MAX_THREAD = 10;
 constexpr unsigned int MAX_LENGTH = 30;
+time_t TIME_NOW = time(nullptr);
 static std::unordered_map<uid_t, std::string> cache_owner;
 static std::unordered_map<gid_t, std::string> cache_group;
 
@@ -52,7 +55,7 @@ struct PendingDir {
 };
 
 void LongRecolection(FileEntry &fe, const std::string &full_path,
-                     const dirent *entry, std::string_view current_path, const Option& health ) {
+                     const dirent *entry, std::string_view current_path, const Option& health) {
   // Inicialización de seguridad para evitar valores basura en bitfields y metadatos
   fe.inode = 0;
   fe.size = 0;
@@ -84,10 +87,9 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
     fe.size = stx.stx_size;
     fe.nlinks = stx.stx_nlink;
     fe.mode = stx.stx_mode;
+    fe.mtime = stx.stx_mtime.tv_sec;
     fe.uid = stx.stx_uid;
     fe.gid = stx.stx_gid;
-    fe.mtime = stx.stx_mtime.tv_sec;
-
     fe.btime = (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
 
     // Usar S_ISDIR y S_ISLNK de statx garantiza corrección sin depender de d_type del dirent (que puede ser DT_UNKNOWN)
@@ -118,63 +120,70 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
             .level = 3,
             });
       }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
-            });
+      if(fe.is_symlink){
+        struct statx stx_target;
+        if(statx(AT_FDCWD, full_path.c_str(), 0, STATX_TYPE, &stx_target) == -1){
+          if(errno == ENOENT || errno == ENOTDIR || errno == ELOOP){
+            fe.health.emplace_back(HealthFlag{
+                .code = "broken symlink — target does not exist",
+                .level = 3,
+            }); 
+            fe.symlink_broken = true;
+          }
+        }
       }
-        if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
+      if(S_ISREG(stx.stx_mode)){
+        bool has_exec = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
+        bool has_no_read = (stx.stx_mode & (S_IRUSR | S_IRGRP | S_IROTH)) == 0;
+
+        if(has_exec && has_no_read){
+          fe.health.emplace_back(HealthFlag{
+            .code = "executable without read bit — suspicious permission",
             .level = 3,
-            });
+          });
+        }
       }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
+      if(!cache_owner.contains(fe.uid)){
+        errno = 0;
+        passwd *pw = getpwuid(fe.uid);
+        if(pw){
+          cache_owner[fe.uid] = cache_owner[fe.uid] = pw->pw_name;
+        }
+        } else {
+          cache_owner[fe.uid] = std::to_string(fe.uid);
+          if (errno == 0 || errno == ENOENT) {
+            fe.health.emplace_back(HealthFlag{
+              .code = "orphan uid — user no longer exists",
+              .level = 3,
             });
+          }
+        }
       }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
+
+      if(!cache_group.contains(fe.gid)){
+        errno = 0;
+        group *gp = getgrgid(fe.gid);
+        if(gp){
+          cache_group[fe.gid] = cache_group[fe.gid] = gp->gr_name;
+        }
+        } else {
+          cache_group[fe.gid] = std::to_string(fe.gid);
+          if (errno == 0 || errno == ENOENT) {
+            fe.health.emplace_back(HealthFlag{
+              .code = "orphan uid — user no longer exists",
+              .level = 3,
             });
+          }
+        }
       }
-      if(stx.stx_mode & S_ISUID){
+      if(fe.mtime > TIME_NOW){
         fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
-            .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_ISUID){
-        fe.health.emplace_back(HealthFlag{
-            .code = "--",
+            .code = "future timestamp — mtime is ahead of system clock",
             .level = 3,
             });
       }
     }
   }
-}
 
 
 void LongPrinter(const std::vector<FileEntry> &entries) {
@@ -226,7 +235,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     // 4. Tamaño (Manejo del valor centinela MAX que definimos)
     std::string size_str;
     auto size_final = static_cast<double>(e.size);
-    if((e.size == 0 ) || (e.size > 0 && e.size < 1024)){
+    if((e.size < 1024)){
       size_str = std::format("{:.2f} B",size_final);
     }
     else if(e.size < 1048576){
@@ -256,7 +265,8 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
    
     std::string display_name = e.name;
     if(MAX_LENGTH < display_name.size()){
-      display_name = display_name.substr(0,MAX_LENGTH -3) + "...";
+      display_name.resize(0,MAX_LENGTH -3);
+      display_name.append("...");
     }
     
     auto pading_size = MAX_LENGTH - static_cast<unsigned int>(display_name.size());
@@ -278,7 +288,6 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
                              e.nlinks, owner, group_str, size_str, time_str, formatted_name, join_alert);
   }
-}
 } // namespace
 
 void LIST_HANDLER(const GroupToken &token_group) {
