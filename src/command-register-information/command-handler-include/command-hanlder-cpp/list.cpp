@@ -30,6 +30,11 @@
 #include <unordered_map>
 #include <variant>
 #include <ctime>
+#include <sys/ioctl.h>
+#include <linux/fs.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <shared_mutex>
 
 namespace {
 constexpr unsigned int MAX_THREAD = 10;
@@ -37,6 +42,9 @@ constexpr unsigned int MAX_LENGTH = 30;
 time_t TIME_NOW = time(nullptr);
 static std::unordered_map<uid_t, std::string> cache_owner;
 static std::unordered_map<gid_t, std::string> cache_group;
+static std::shared_mutex owner_mtx;
+static std::shared_mutex group_mtx;
+static int TOLERANCE_TIME = 1000;
 
 struct Option {
   bool recursive : 1;
@@ -54,137 +62,243 @@ struct PendingDir {
   int depth;
 };
 
-void LongRecolection(FileEntry &fe, const std::string &full_path,
-                     const dirent *entry, std::string_view current_path, const Option& health) {
-  // Inicialización de seguridad para evitar valores basura en bitfields y metadatos
-  fe.inode = 0;
-  fe.size = 0;
-  fe.mode = 0;
-  fe.nlinks = 0;
-  fe.uid = 0;
-  fe.gid = 0;
-  fe.is_directory = false;
-  fe.is_symlink = false;
-  fe.symlink_broken = false;
-  fe.has_capabilities = false;
-  fe.mtime = 0;
-  fe.btime = 0;
-  fe.name = entry->d_name;
-  fe.path = current_path;
-  fe.symlink_target.clear();
-  fe.extension.clear();
-  if (!fe.health.empty()) {
-    fe.health.clear();
-  }
-
-  struct statx stx;
-  unsigned int mask = STATX_BASIC_STATS | STATX_BTIME;
-
-  // full_path ya viene construido del loop principal para evitar doble format
-  if (statx(AT_FDCWD, full_path.c_str(),
-            AT_SYMLINK_NOFOLLOW | AT_STATX_DONT_SYNC, mask, &stx) == 0) {
-    fe.inode = stx.stx_ino;
-    fe.size = stx.stx_size;
-    fe.nlinks = stx.stx_nlink;
-    fe.mode = stx.stx_mode;
-    fe.mtime = stx.stx_mtime.tv_sec;
-    fe.uid = stx.stx_uid;
-    fe.gid = stx.stx_gid;
-    fe.btime = (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
-
-    // Usar S_ISDIR y S_ISLNK de statx garantiza corrección sin depender de d_type del dirent (que puede ser DT_UNKNOWN)
-    fe.is_directory = S_ISDIR(stx.stx_mode);
-    fe.is_symlink = S_ISLNK(stx.stx_mode);
-
-    std::string_view name_view(fe.name);
-    if (size_t dot_pos = name_view.find_last_of('.');
-        dot_pos != std::string_view::npos && dot_pos > 0) {
-      fe.extension = std::string(name_view.substr(dot_pos));
-    }
-    if(health.healt){
-      if(stx.stx_mode & S_ISUID){
+void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const struct statx &stx) {
+    if ((stx.stx_mode & S_ISUID) && (stx.stx_mode & S_IWOTH)) {
+        fe.health.emplace_back(HealthFlag{
+            .code = "CRITICAL: SUID + world-writable — allows any user to gain file owner privileges",
+            .level = 5,
+        });
+    } else if (stx.stx_mode & S_ISUID) {
         fe.health.emplace_back(HealthFlag{
             .code = "SUID bit set — executes as file owner",
             .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_ISGID){
+        });
+    }
+
+    if (stx.stx_mode & S_ISGID) {
         fe.health.emplace_back(HealthFlag{
             .code = "SGID bit set — executes as file group",
             .level = 3,
-            });
-      }
-      if(stx.stx_mode & S_IWOTH){
+        });
+    }
+
+    if (stx.stx_mode & S_IWOTH) {
         fe.health.emplace_back(HealthFlag{
             .code = "world-writable — any user can modify this file",
             .level = 3,
-            });
-      }
-      if(fe.is_symlink){
-        struct statx stx_target;
-        if(statx(AT_FDCWD, full_path.c_str(), 0, STATX_TYPE, &stx_target) == -1){
-          if(errno == ENOENT || errno == ENOTDIR || errno == ELOOP){
+        });
+    }
+
+    if (S_ISREG(stx.stx_mode)) {
+        if (stx.stx_mode & S_ISVTX) {
             fe.health.emplace_back(HealthFlag{
-                .code = "broken symlink — target does not exist",
-                .level = 3,
-            }); 
-            fe.symlink_broken = true;
-          }
+                .code = "sticky bit set on non-directory — obsolete or suspicious configuration",
+                .level = 2,
+            });
         }
-      }
-      if(S_ISREG(stx.stx_mode)){
+
         bool has_exec = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
         bool has_no_read = (stx.stx_mode & (S_IRUSR | S_IRGRP | S_IROTH)) == 0;
 
-        if(has_exec && has_no_read){
-          fe.health.emplace_back(HealthFlag{
-            .code = "executable without read bit — suspicious permission",
-            .level = 3,
-          });
-        }
-      }
-      if(!cache_owner.contains(fe.uid)){
-        errno = 0;
-       const passwd *pw = getpwuid(fe.uid);
-        if(pw){
-          cache_owner[fe.uid] = cache_owner[fe.uid] = pw->pw_name;
-        }
-        } else {
-          cache_owner[fe.uid] = std::to_string(fe.uid);
-          if (errno == 0 || errno == ENOENT) {
+        if(has_exec && (stx.stx_mode & (S_IWGRP | S_IWOTH))){
             fe.health.emplace_back(HealthFlag{
-              .code = "orphan uid — user no longer exists",
-              .level = 3,
+                .code = "writable executable — file has execute permissions but is group or world writable, allowing code injection",
+                .level = 4,
             });
-          }
         }
-      }
 
-      if(!cache_group.contains(fe.gid)){
-        errno = 0;
-        const group *gp = getgrgid(fe.gid);
-        if(gp){
-          cache_group[fe.gid] = cache_group[fe.gid] = gp->gr_name;
-        }
-        } else {
-          cache_group[fe.gid] = std::to_string(fe.gid);
-          if (errno == 0 || errno == ENOENT) {
+        if (has_exec && has_no_read) {
             fe.health.emplace_back(HealthFlag{
-              .code = "orphan uid — user no longer exists",
-              .level = 3,
+                .code = "executable without read bit — suspicious permission",
+                .level = 3,
             });
-          }
         }
-      }
-      if(fe.mtime > TIME_NOW){
+
+        int fd = open(full_path.c_str(), O_RDONLY | O_NONBLOCK);
+        if (fd != -1) {
+            int flags = 0;
+            if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != -1) {
+              if(flags & FS_IMMUTABLE_FL){
+                fe.health.emplace_back(HealthFlag{
+                    .code = "immutable attribute set — file cannot be modified or deleted",
+                    .level = 3,
+                });
+              }
+
+              if(flags & FS_APPEND_FL){
+                fe.health.emplace_back(HealthFlag{
+                    .code = "append-only attribute set — file can only be opened in append mode for writing; deletion and truncation blocked",
+                    .level = 3,
+                });
+              }
+            }
+            close(fd);
+        }
+    }
+
+    if (fe.is_symlink) {
+        struct statx stx_target;
+        if (statx(AT_FDCWD, full_path.c_str(), 0, STATX_TYPE, &stx_target) == -1) {
+            if (errno == ENOENT || errno == ENOTDIR || errno == ELOOP) {
+                fe.health.emplace_back(HealthFlag{
+                    .code = "broken symlink — target does not exist",
+                    .level = 3,
+                });
+                fe.symlink_broken = true;
+            }
+        }
+    }
+
+    if(fe.is_directory){
+      if((stx.stx_mode & S_IWOTH) && !(stx.stx_mode & S_ISVTX)){
         fe.health.emplace_back(HealthFlag{
-            .code = "future timestamp — mtime is ahead of system clock",
-            .level = 3,
+            .code = "world-writable directory without sticky bit — arbitrary users can delete, move, or hijack files owned by others",
+            .level = 4,
             });
       }
     }
-  }
 
+    // 4. Anomalías temporales
+    if (fe.mtime > (TIME_NOW + TOLERANCE_TIME)) {
+        fe.health.emplace_back(HealthFlag{
+            .code = "future timestamp — mtime is ahead of system clock",
+            .level = 3,
+        });
+    }
+
+    if((stx.stx_mask & STATX_BTIME) && fe.btime > 0){
+      bool is_executable = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
+      if(fe.mtime < (fe.btime + TOLERANCE_TIME) && S_ISREG(stx.stx_mode) && is_executable){
+        fe.health.emplace_back(HealthFlag{
+            .code = "timestomping detected — modification time (mtime) is prior to creation time (btime)",
+            .level = 3,
+        });
+      }
+    }
+}
+
+
+void LongRecolection(FileEntry &fe, const std::string &full_path,
+                     const dirent *entry, std::string_view current_path, const Option& health) {
+    fe.inode = 0;
+    fe.size = 0;
+    fe.mode = 0;
+    fe.nlinks = 0;
+    fe.uid = 0;
+    fe.gid = 0;
+    fe.is_directory = false;
+    fe.is_symlink = false;
+    fe.symlink_broken = false;
+    fe.has_capabilities = false;
+    fe.mtime = 0;
+    fe.btime = 0;
+    fe.name = entry->d_name;
+    fe.path = current_path;
+    fe.symlink_target.clear();
+    fe.extension.clear();
+    if (!fe.health.empty()) {
+        fe.health.clear();
+    }
+
+    struct statx stx;
+    unsigned int mask = STATX_BASIC_STATS | STATX_BTIME;
+
+    if (statx(AT_FDCWD, full_path.c_str(),
+              AT_SYMLINK_NOFOLLOW | AT_STATX_DONT_SYNC, mask, &stx) == 0) {
+        
+        fe.inode = stx.stx_ino;
+        fe.size = stx.stx_size;
+        fe.nlinks = stx.stx_nlink;
+        fe.mode = stx.stx_mode;
+        fe.mtime = stx.stx_mtime.tv_sec;
+        fe.uid = stx.stx_uid;
+        fe.gid = stx.stx_gid;
+        fe.btime = (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
+
+        fe.is_directory = S_ISDIR(stx.stx_mode);
+        fe.is_symlink = S_ISLNK(stx.stx_mode);
+
+        std::string_view name_view(fe.name);
+        if (size_t dot_pos = name_view.find_last_of('.');
+            dot_pos != std::string_view::npos && dot_pos > 0) {
+            fe.extension = std::string(name_view.substr(dot_pos));
+        }
+
+        if (health.healt) {
+            PerformHealthChecks(fe, full_path, stx);
+        }
+
+
+        bool is_orphan_uid = false;
+        bool needs_uid_fetch = false;
+        {
+            std::shared_lock lock(owner_mtx);
+            if (cache_owner.contains(fe.uid)) {
+                if (cache_owner.at(fe.uid) == std::to_string(fe.uid)) {is_orphan_uid = true;}
+            } else {
+                needs_uid_fetch = true;
+            }
+        }
+
+        if (needs_uid_fetch) {
+            std::unique_lock lock(owner_mtx);
+            if (cache_owner.contains(fe.uid)) { // Double-check
+                if (cache_owner.at(fe.uid) == std::to_string(fe.uid)) {is_orphan_uid = true;}
+            } else {
+                errno = 0;
+                const passwd *pw = getpwuid(fe.uid);
+                if (pw) {
+                    cache_owner[fe.uid] = pw->pw_name;
+                } else {
+                    cache_owner[fe.uid] = std::to_string(fe.uid);
+                    if (errno == 0 || errno == ENOENT) {is_orphan_uid = true;}
+                }
+            }
+        }
+
+        if (health.healt && is_orphan_uid) {
+            fe.health.emplace_back(HealthFlag{
+                .code = "orphan uid — user no longer exists",
+                .level = 3,
+            });
+        }
+
+
+        bool is_orphan_gid = false;
+        bool needs_gid_fetch = false;
+        {
+            std::shared_lock lock(group_mtx);
+            if (cache_group.contains(fe.gid)) {
+                if (cache_group.at(fe.gid) == std::to_string(fe.gid)) {is_orphan_gid = true;}
+            } else {
+                needs_gid_fetch = true;
+            }
+        }
+
+        if (needs_gid_fetch) {
+            std::unique_lock lock(group_mtx);
+            if (cache_group.contains(fe.gid)) { // Double-check
+                if (cache_group.at(fe.gid) == std::to_string(fe.gid)) {is_orphan_gid = true;}
+            } else {
+                errno = 0;
+                const group *gp = getgrgid(fe.gid);
+                if (gp) {
+                    cache_group[fe.gid] = gp->gr_name;
+                } else {
+                    cache_group[fe.gid] = std::to_string(fe.gid);
+                    if (errno == 0 || errno == ENOENT) {is_orphan_gid = true;}
+                }
+            }
+        }
+
+        if (health.healt && is_orphan_gid) {
+            fe.health.emplace_back(HealthFlag{
+                .code = "orphan gid — group no longer exists",
+                .level = 3,
+            });
+        }
+    }
+}
 
 void LongPrinter(const std::vector<FileEntry> &entries) {
   if (entries.empty()) {
@@ -212,24 +326,8 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     perms += (e.mode & S_IWOTH) ? "w" : "-";
     perms += (e.mode & S_IXOTH) ? "x" : "-";
 
-    std::string owner;
-    std::string group_str;
-    if (cache_owner.contains(e.uid)) {
-      owner = cache_owner.at(e.uid);
-    } else {
-     const passwd *pw = getpwuid(e.uid);
-      owner = pw ? pw->pw_name : "UNKNOWN";
-      cache_owner[e.uid] = owner;
-    }
-
-    if (cache_group.contains(e.gid)) {
-      group_str = cache_group.at(e.gid);
-    } else {
-      const group *gp = getgrgid(e.gid);
-      group_str = gp ? gp->gr_name : "UNKNOWN";
-      cache_group[e.gid] = group_str;
-    }
-
+    std::string owner = cache_owner.contains(e.uid) ? cache_owner.at(e.uid) : std::to_string(e.uid);
+    std::string group_str = cache_group.contains(e.gid)? cache_group.at(e.gid) : std::to_string(e.gid);
     // 3. Tiempo
     std::string time_str = std::format("{:%b %d %H:%M}", std::chrono::system_clock::from_time_t(e.mtime));
     // 4. Tamaño (Manejo del valor centinela MAX que definimos)
@@ -288,7 +386,8 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
                              e.nlinks, owner, group_str, size_str, time_str, formatted_name, join_alert);
   }
-} // namespace
+}
+}// namespace
 
 void LIST_HANDLER(const GroupToken &token_group) {
   std::vector<FileEntry> file_entry;
@@ -484,3 +583,4 @@ void LIST_HANDLER(const GroupToken &token_group) {
 
   LongPrinter(file_entry);
 }
+
