@@ -99,7 +99,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 ### Security — Analysis
 | Option             | Alias | Description                                  | Status |
 | :----------------- | :---- | :------------------------------------------- |------- |
-| `--health`         |       | Enabled by default — full health analysis    |        |
+| `--health`         |       | Enabled by default — full health analysis    |   ✅   |
 | `--no-health`      |       | Disable health analysis                      |        |
 | `--capabilities`   |       | Show Linux capabilities per entry            |        |
 | `--acl`            |       | Show extended ACLs if they exist             |        |
@@ -114,21 +114,20 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 ### Sorting
 | Option            | Alias | Description                      | Status |
 | :---------------- | :---- | :------------------------------- |------- |
-| `--sort=name`     |       | By name (default)                |        |
-| `--sort=size`     |       | By size                          |        |
-| `--sort=date`     |       | By modification date             |        |
-| `--sort=ext`      |       | By extension                     |        |
-| `--sort=type`     |       | Directories first                |        |
-| `--sort=severity` |       | By security alert level          |        |
-| `--sort=owner`    |       | By owner                         |        |
-| `--reverse`       |       | Reverse order                    |        |
-| `--dirs-first`    |       | Directories always first         |        |
+| `--sort=name`     |       | By name (default)                |   ✅   |
+| `--sort=size`     |       | By size                          |   ✅   |
+| `--sort=date`     |       | By modification date             |   ✅   |
+| `--sort=ext`      |       | By extension                     |   ✅   |
+| `--sort=type`     |       | Directories first                |   ✅   |
+| `--sort=severity` |       | By security alert level          |   ✅   |
+| `--sort=owner`    |       | By owner                         |   ✅   |
+| `--reverse`       |       | Reverse order                    |   ✅   |
+| `--dirs-first`    |       | Directories always first         |   ✅   |
 | `--alerts-first`  |       | Entries with alerts always first |        |
 
 ### Presentation
 | Option              | Alias | Description                                  | Status |
 | :------------------ | :---  | :--------------------------------------------|------  |
-| `--long`            | `-l`  | Full metadata per entry                      |        |
 | `--no-header`       |       | Suppress headers in `--long`                 |        |
 | `--tree`            |       | Hierarchical view                            |        |
 | `--grid`            |       | Multiple columns                             |        |
@@ -157,8 +156,8 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 ### System
 | Option         | Alias | Description                        | Status |
 | :------------- | :---- | :--------------------------------- |--------|
-| `--help`       | `-h`  | Help                               |        |
-| `--version`    | `-v`  | Version                            |        |
+| `--help`       | `-h`  | Help                               |   ✅   |
+| `--version`    | `-v`  | Version                            |   ✅   |
 | `--quiet`      | `-q`  | Errors only                        |        |
 | `--no-heading` |       | No directory heading               |        |
 | `--threads=N`  |       | Number of threads (default: auto)  |        |

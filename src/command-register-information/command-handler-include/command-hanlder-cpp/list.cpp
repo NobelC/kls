@@ -37,14 +37,6 @@
 #include <shared_mutex>
 
 namespace {
-constexpr unsigned int MAX_THREAD = 10;
-constexpr unsigned int MAX_LENGTH = 30;
-time_t TIME_NOW = time(nullptr);
-static std::unordered_map<uid_t, std::string> cache_owner;
-static std::unordered_map<gid_t, std::string> cache_group;
-static std::shared_mutex owner_mtx;
-static std::shared_mutex group_mtx;
-static int TOLERANCE_TIME = 1000;
 
 struct Option {
   bool recursive : 1;
@@ -55,7 +47,20 @@ struct Option {
   bool capabilities : 1;
   bool needs_metadata : 1;
   bool healt : 1;
+  bool no_health : 1;
 };
+
+
+
+constexpr unsigned int MAX_THREAD = 10;
+constexpr unsigned int MAX_LENGTH = 30;
+time_t TIME_NOW = time(nullptr);
+static std::unordered_map<uid_t, std::string> cache_owner;
+static std::unordered_map<gid_t, std::string> cache_group;
+static std::shared_mutex owner_mtx;
+static std::shared_mutex group_mtx;
+static int TOLERANCE_TIME = 1000;
+Option OPTION_BOOL; 
 
 struct PendingDir {
   std::string path;
@@ -174,6 +179,22 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
             .level = 3,
         });
       }
+    }
+    
+    if((S_ISCHR(stx.stx_mode)) || (S_ISBLK(stx.stx_mode))) {
+      if(!full_path.starts_with("/dev/")){
+        fe.health.emplace_back(HealthFlag{
+            .code = "device node outside /dev — potential raw hardware/memory access backdoor",
+            .level = 5,
+        });
+      }
+    }
+    bool is_executable = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
+    if((stx.stx_mode & (S_ISUID | S_ISGID)) && !is_executable){
+      fe.health.emplace_back(HealthFlag{
+        .code = "SUID/SGID set but file is not executable — useless configuration, indicates error or broken exploit",
+        .level = 2,
+      });
     }
 }
 
@@ -305,10 +326,19 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     return;
   }
 
-  // Encabezado (si no se activó --no-header)
-  std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n",
+  if(OPTION_BOOL.no_header_format || (OPTION_BOOL.no_health && OPTION_BOOL.no_header_format) ){
+
+  }
+  else if(OPTION_BOOL.no_health){
+      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",
+                           "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
+                           "NAME");
+  }
+  else{
+      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n",
                            "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
                            "NAME", "ALERTS");
+  }
   std::cout << std::string(120, '-') << "\n";
 
   for (const auto &e : entries) {
@@ -353,13 +383,6 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
       size_str = std::format("{:.2f} TB",size_final);   
     }
     
-    auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
-        [](const std::string& acc, const HealthFlag& s){
-          return acc.empty() ? s.code : acc + " | " + s.code; 
-        });
-    if (join_alert.empty()){
-      join_alert = "-----------";
-    }
    
     std::string display_name = e.name;
     if(MAX_LENGTH < display_name.size()){
@@ -383,8 +406,21 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
       formatted_name = display_name;
     }
     // Renderizado Final
-    std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
+    if(OPTION_BOOL.no_health){
+      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n", perms,
+                             e.nlinks, owner, group_str, size_str, time_str, formatted_name);
+    }
+    else{
+      auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
+        [](const std::string& acc, const HealthFlag& s){
+          return acc.empty() ? s.code : acc + " | " + s.code; 
+        });
+      if (join_alert.empty()){
+        join_alert = "-----------";
+      }
+      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
                              e.nlinks, owner, group_str, size_str, time_str, formatted_name, join_alert);
+    }
   }
 }
 }// namespace
@@ -393,7 +429,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
   std::vector<FileEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
-  Option options_bool = {
+  OPTION_BOOL = {
       .recursive = std::ranges::any_of(
           token_group.options,
           [](const auto &t) { return t.name == "--recursive"; }),
@@ -415,10 +451,13 @@ void LIST_HANDLER(const GroupToken &token_group) {
       .needs_metadata = false,
       .healt = std::ranges::any_of(token_group.options, [](const auto& t){
           return t.name == "--health";
-          })};
+          }),
+  .no_health = std::ranges::any_of(token_group.options, [](const auto&t){
+        return t.name == "--no-health"; 
+      }) };
 
-  options_bool.needs_metadata =
-      options_bool.long_format ||
+  OPTION_BOOL.needs_metadata =
+      OPTION_BOOL.long_format ||
       std::ranges::any_of(token_group.options, [](const auto &opt) {
         return opt.name == "--modified-before" ||
                opt.name == "--modified-after" ||
@@ -436,7 +475,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
       depth_limit = std::stoi(std::string(it->value));
     }
   }
-  if (options_bool.recursive && it == token_group.options.end()) {
+  if (OPTION_BOOL.recursive && it == token_group.options.end()) {
     depth_limit = std::numeric_limits<int>::max();
   }
 
@@ -465,7 +504,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
 
   threads.reserve(used_thread);
   for (size_t i = 0; i < used_thread; i++) {
-    threads.emplace_back([&, options_bool, depth_limit]() {
+    threads.emplace_back([&, depth_limit]() {
       std::vector<FileEntry> file_entry_temp;
       std::vector<PendingDir> temp_pending_dir;
 
@@ -506,7 +545,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
           if (name == "." || name == "..") {
             continue;
           }
-          if (!options_bool.all && name.starts_with('.')) {
+          if (!OPTION_BOOL.all && name.starts_with('.')) {
             continue;
           }
 
@@ -517,9 +556,9 @@ void LIST_HANDLER(const GroupToken &token_group) {
           full_path += name;
 
           FileEntry entry_data;
-          LongRecolection(entry_data, full_path, entry, current.path, options_bool);
+          LongRecolection(entry_data, full_path, entry, current.path, OPTION_BOOL);
 
-          if (entry_data.is_directory && options_bool.recursive &&
+          if (entry_data.is_directory && OPTION_BOOL.recursive &&
               current.depth < depth_limit) {
             temp_pending_dir.push_back(
                 {.path = full_path, .depth = current.depth + 1});
