@@ -326,7 +326,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     return;
   }
 
-  if(OPTION_BOOL.no_header_format || (OPTION_BOOL.no_health && OPTION_BOOL.no_header_format) ){
+  if(OPTION_BOOL.no_header_format ){
 
   }
   else if(OPTION_BOOL.no_health){
