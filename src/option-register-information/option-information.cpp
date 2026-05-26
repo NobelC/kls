@@ -393,7 +393,29 @@ GeneralOptionLog(owner_filter);
       });
   GeneralOptionLog(min_links);
 
- 
+  OptionMetaData min_severity;
+  min_severity.normalized_name = "--min-severity"; 
+  min_severity.data_type = TypeDataReceived::STRING;
+  min_severity.category = OptionCategory::FILTERING;
+  min_severity.hanlder = FilteringProcess([](FilterStruct &filter_contex){
+      const auto* min_severity_raw = std::any_cast<std::string_view>(&filter_contex.context);
+      if(!min_severity_raw || min_severity_raw->empty()){
+        return;
+      }
+      uint8_t min_severity_value = 0;
+      auto [ptr,ercc] = std::from_chars(min_severity_raw->data(), min_severity_raw->data() + min_severity_raw->size(), min_severity_value);
+      if(ercc != std::errc{}){
+        return;
+      }
+
+      std::erase_if(filter_contex.entries, [min_severity_value](const FileEntry& e){
+          bool has_high_severity  =  std::ranges::any_of(e.health, [min_severity_value](uint8_t lvl){
+                return lvl >= min_severity_value;
+              }, &HealthFlag::level);
+          return !has_high_severity;
+          });
+      });
+  GeneralOptionLog(min_severity);
 
   // --- ORDENAMIENTO (SORTING) ---
 
@@ -552,12 +574,7 @@ GeneralOptionLog(owner_filter);
   timeline.hanlder = std::monostate{};
   GeneralOptionLog(timeline);
 
-  OptionMetaData min_severity;
-  min_severity.normalized_name = "--min-severity";
-  min_severity.category = OptionCategory::FILTERING;
-  min_severity.data_type = TypeDataReceived::STRING;
-  min_severity.hanlder = std::monostate{};
-  GeneralOptionLog(min_severity);
+
 
   OptionMetaData only_anomalies;
   only_anomalies.normalized_name = "--only-anomalies";
