@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <ctime>
 #include <fnmatch.h>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <sys/types.h>
@@ -349,7 +350,7 @@ owner_filter.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
 GeneralOptionLog(owner_filter);
   
   OptionMetaData group_filter;
-  group_filter.normalized_name = "--group"; // Corregido el nombre de la opción
+  group_filter.normalized_name = "--group"; 
   group_filter.data_type = TypeDataReceived::STRING;
   group_filter.category = OptionCategory::FILTERING;
   group_filter.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
@@ -359,12 +360,12 @@ GeneralOptionLog(owner_filter);
   }
 
   const std::string_view group = *group_raw;
-  static std::unordered_map<gid_t, std::string> cache_group; // Corregido uid_t -> gid_t
+  static std::unordered_map<gid_t, std::string> cache_group; 
 
   std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
     auto it = cache_group.find(e.gid);
     if (it == cache_group.end()) {
-      const struct group *gp = getgrgid(e.gid); // Añadido struct explicitamente
+      const struct group *gp = getgrgid(e.gid); 
       it = cache_group.insert({e.gid, gp ? std::string(gp->gr_name) : "UNKNOWN"}).first;
     }
     return it->second != group;
@@ -373,7 +374,7 @@ GeneralOptionLog(owner_filter);
   GeneralOptionLog(group_filter);
 
   OptionMetaData min_links;
-  min_links.normalized_name = "--min-links"; // Corregido el nombre de la opción
+  min_links.normalized_name = "--min-links"; 
   min_links.data_type = TypeDataReceived::STRING;
   min_links.category = OptionCategory::FILTERING;
   min_links.hanlder = FilteringProcess([](FilterStruct &filter_contex){
@@ -437,15 +438,28 @@ GeneralOptionLog(owner_filter);
         return std::tie(a.extension, a.name) < std::tie(b.extension, b.name);
       });
     } else if (criteria == "severity") {
-      std::ranges::sort(filter_contex.entries,
-                        [](const FileEntry &a, const FileEntry &b) {
-                          // Higher severity first (assuming health alerts are
-                          // ranked)
-                          return a.health.size() > b.health.size();
+      std::ranges::sort(filter_contex.entries,std::ranges::greater(),
+                        [](const FileEntry &entry) {
+                          auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::level);
+                          return it == entry.health.end()? 0 : it->level;
                         });
     }
   });
   GeneralOptionLog(sort);
+  
+  OptionMetaData alerts_first;
+  alerts_first.normalized_name = "--alerts-first";
+  alerts_first.category = OptionCategory::SORTING;
+  alerts_first.hanlder = FilteringProcess([](FilterStruct &filter_contex) {
+    std::ranges::sort(filter_contex.entries,std::ranges::greater(),
+                      [](const FileEntry &entry) {
+                        auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::code);
+                        return it == entry.health.end() ? "" : it->code;
+                      });
+  });
+  GeneralOptionLog(alerts_first);
+
+
 
   OptionMetaData reverse;
   reverse.normalized_name = "--reverse";
@@ -513,12 +527,6 @@ GeneralOptionLog(owner_filter);
   attack_surface.category = OptionCategory::PRESENTATION;
   attack_surface.hanlder = std::monostate{};
   GeneralOptionLog(attack_surface);
-
-  OptionMetaData alerts_first;
-  alerts_first.normalized_name = "--alerts-first";
-  alerts_first.category = OptionCategory::SORTING;
-  alerts_first.hanlder = std::monostate{};
-  GeneralOptionLog(alerts_first);
 
   OptionMetaData security_report;
   security_report.normalized_name = "--security-report";

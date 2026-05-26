@@ -100,7 +100,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | Option             | Alias | Description                                  | Status |
 | :----------------- | :---- | :------------------------------------------- |------- |
 | `--health`         |       | Enabled by default — full health analysis    |   ✅   |
-| `--no-health`      |       | Disable health analysis                      |        |
+| `--no-health`      |       | Disable health analysis                      |   ✅   |
 | `--capabilities`   |       | Show Linux capabilities per entry            |        |
 | `--acl`            |       | Show extended ACLs if they exist             |        |
 | `--attack-surface` |       | Summary of the directory's attack surface    |        |
@@ -123,19 +123,18 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | `--sort=owner`    |       | By owner                         |   ✅   |
 | `--reverse`       |       | Reverse order                    |   ✅   |
 | `--dirs-first`    |       | Directories always first         |   ✅   |
-| `--alerts-first`  |       | Entries with alerts always first |        |
+| `--alerts-first`  |       | Entries with alerts always first |   ✅   |
 
 ### Presentation
 | Option              | Alias | Description                                  | Status |
 | :------------------ | :---  | :--------------------------------------------|------  |
-| `--no-header`       |       | Suppress headers in `--long`                 |        |
+| `--no-header`       |       | Suppress headers                             |   ✅   |
 | `--tree`            |       | Hierarchical view                            |        |
 | `--grid`            |       | Multiple columns                             |        |
 | `--compact`         |       | Names only, maximum density                  |        |
 | `--summary`         |       | Statistics only, without listing entries     |        |
 | `--security-report` |       | Consolidated security report at the end      |        |
 | `--no-color`        |       | No ANSI colors                               |        |
-| `--no-icons`        |       | No alert symbols                             |        |
 | `--inode`           |       | Show inode number                            |        |
 | `--nlinks`          |       | Show number of hardlinks                     |        |
 | `--blocks`          |       | Show disk blocks used                        |        |
