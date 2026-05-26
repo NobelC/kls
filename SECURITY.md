@@ -17,7 +17,7 @@ kls is currently in active development. Only the latest version on `main` receiv
 
 If you find a security issue in the analysis logic or metadata reporting, report it privately.
 
-Contact me directly via GitHub: [@QuantumCpp](https://github.com/QuantumCpp)
+Contact me directly via GitHub: [@NobelC](https://github.com/NobelC)
 
 Include:
 - Description of the vulnerability
