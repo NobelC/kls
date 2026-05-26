@@ -276,20 +276,9 @@ local.cmake
 
 issues.sh
 
+# Artefactos de liberación locales (Releases)
+kls-*.tar.gz
+kls-*.tar.gz.asc
 
-# ----------------------------------------------------------------------------
-# Notas importantes
-# ----------------------------------------------------------------------------
-#
-# 1. compile_commands.json: Algunos prefieren versionarlo para que el LSP
-#    funcione sin regenerar el build. Si quieres incluirlo, comenta la línea.
-#
-# 2. Si usas submodules de Git para dependencias, asegúrate de que
-#    third-party/ o external/ estén correctamente gestionados.
-#
-# 3. Si trabajas en equipo, considera versionar:
-#    - .clangd (config compartida del LSP)
-#    - .clang-format (estilo de código)
-#    - cmake/toolchain files (si hay cross-compilation)
-#
-# ----------------------------------------------------------------------------
+# Directorios temporales de pruebas de extracción
+/kls-*/
