@@ -79,7 +79,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 
 ### Security — Filtering
 | Option                    | Alias | Description                                   |Status|
-| :------------------------ | :---- | :-------------------------------------------- |------|
+| :------------------------ | :---- | :-------------------------------------------- |:---- |
 | `--only-alerts`           |       | Only show entries with alerts                 |      |
 | `--only-suid`             |       | Only files with active SUID                   |      |
 | `--only-sgid`             |       | Only files with active SGID                   |      | 
@@ -94,7 +94,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | `--only-anomalies`        |       | Only temporal anomalies (ctime < mtime)       |      |
 | `--only-ancient=N`        |       | Only files not modified in more than N days   |      |
 | `--exclude-alerts`        |       | Show everything except entries with alerts    |      |
-| `--min-severity=N`        |       | Only alerts of level N or higher (1, 2, 3)    |      | 
+| `--min-severity=N`        |       | Only alerts of level N or higher (1, 2, 3)    |  ✅  | 
 
 ### Security — Analysis
 | Option             | Alias | Description                                  | Status |

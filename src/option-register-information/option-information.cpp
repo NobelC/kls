@@ -19,6 +19,9 @@
 #include <vector>
 #include <pwd.h>
 #include <grp.h>
+#include <iostream>
+#include <format>
+#include <string>
 
 namespace {
 std::string FormatTime(const std::time_t &time) {
@@ -505,13 +508,6 @@ GeneralOptionLog(owner_filter);
 
   // --- PRESENTACIÓN ---
 
-  OptionMetaData long_format;
-  long_format.normalized_name = "--long";
-  long_format.alias_name = "-l";
-  long_format.category = OptionCategory::PRESENTATION;
-  long_format.hanlder = std::monostate{};
-  GeneralOptionLog(long_format);
-
   OptionMetaData no_header;
   no_header.normalized_name = "--no-header";
   no_header.category = OptionCategory::PRESENTATION;
@@ -535,7 +531,18 @@ GeneralOptionLog(owner_filter);
   OptionMetaData no_health;
   no_health.normalized_name = "--no-health";
   no_health.category = OptionCategory::PRESENTATION;
-  no_health.hanlder = std::monostate{};
+  no_health.hanlder = PresentationProcess([](PresentationStruct& entries,std::unordered_map<uid_t, std::string>& owner_group,std::unordered_map<uid_t, std::string>& cache_group)
+      {
+        std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",
+                           "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
+                           "NAME");
+        std::cout << std::string(120, "-") << "\n";
+        for(const auto& e : entries){
+          std::string perms;
+        }
+
+
+      });
   GeneralOptionLog(no_health);
 
   OptionMetaData only_alerts;
@@ -544,41 +551,4 @@ GeneralOptionLog(owner_filter);
   only_alerts.hanlder = std::monostate{};
   GeneralOptionLog(only_alerts);
 
-  OptionMetaData attack_surface;
-  attack_surface.normalized_name = "--attack-surface";
-  attack_surface.category = OptionCategory::PRESENTATION;
-  attack_surface.hanlder = std::monostate{};
-  GeneralOptionLog(attack_surface);
-
-  OptionMetaData security_report;
-  security_report.normalized_name = "--security-report";
-  security_report.category = OptionCategory::PRESENTATION;
-  security_report.hanlder = std::monostate{};
-  GeneralOptionLog(security_report);
-
-  OptionMetaData immutable;
-  immutable.normalized_name = "--immutable";
-  immutable.category = OptionCategory::PRESENTATION;
-  immutable.hanlder = std::monostate{};
-  GeneralOptionLog(immutable);
-
-  OptionMetaData setuid_tree;
-  setuid_tree.normalized_name = "--setuid-tree";
-  setuid_tree.category = OptionCategory::COLLECTION;
-  setuid_tree.hanlder = std::monostate{};
-  GeneralOptionLog(setuid_tree);
-
-  OptionMetaData timeline;
-  timeline.normalized_name = "--timeline";
-  timeline.category = OptionCategory::PRESENTATION;
-  timeline.hanlder = std::monostate{};
-  GeneralOptionLog(timeline);
-
-
-
-  OptionMetaData only_anomalies;
-  only_anomalies.normalized_name = "--only-anomalies";
-  only_anomalies.category = OptionCategory::FILTERING;
-  only_anomalies.hanlder = std::monostate{};
-  GeneralOptionLog(only_anomalies);
 }

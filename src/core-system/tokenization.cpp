@@ -26,6 +26,7 @@ std::vector<Token> tokenization(const std::vector<std::string> &arguments) {
           .name = arg,
           .value = "",
       });
+      continue;
     }
 
     // Handle cases where only positional arguments are allowed (after "--")
