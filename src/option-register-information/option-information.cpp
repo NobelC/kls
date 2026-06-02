@@ -19,8 +19,6 @@
 #include <vector>
 #include <pwd.h>
 #include <grp.h>
-#include <iostream>
-#include <format>
 #include <string>
 
 namespace {
@@ -531,17 +529,7 @@ GeneralOptionLog(owner_filter);
   OptionMetaData no_health;
   no_health.normalized_name = "--no-health";
   no_health.category = OptionCategory::PRESENTATION;
-  no_health.hanlder = PresentationProcess([](const PresentationStruct& entries,std::unordered_map<uid_t, std::string>& owner_group,std::unordered_map<uid_t, std::string>& cache_group)
-      {
-        std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",
-                           "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
-                           "NAME");
-        std::cout << std::string(120, '-') << "\n";
-        for(const auto& e : entries.entries){
-        }
-
-
-      });
+  no_health.hanlder = std::monostate{}; 
   GeneralOptionLog(no_health);
 
   OptionMetaData only_alerts;
