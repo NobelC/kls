@@ -41,11 +41,12 @@ struct Option {
   bool follow_symlink : 1;
   bool capabilities : 1;
   bool no_health : 1;
+  bool stats : 1;
 };
 
 constexpr unsigned int MAX_LENGTH = 30;
 time_t TIME_NOW = time(nullptr);
-static int TOLERANCE_TIME = 1000; 
+constexpr static int TOLERANCE_TIME = 1000; 
 
 struct PendingDir {
   std::string path;
@@ -53,6 +54,7 @@ struct PendingDir {
 };
 
 void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const struct statx &stx) {
+
     if ((stx.stx_mode & S_ISUID) && (stx.stx_mode & S_IWOTH)) {
         fe.health.emplace_back(HealthFlag{
             .code = "CRITICAL: SUID + world-writable — allows any user to gain file owner privileges",
@@ -181,6 +183,27 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
         .level = 2,
       });
     }
+
+    {
+      errno = 0;
+      struct passwd* pw = getpwuid(stx.stx_uid);
+      if(!pw && errno == 0){
+        fe.health.emplace_back(HealthFlag{
+          .code = "orphan uid — user no longer exists",
+          .level = 3,
+        });
+      }
+    }
+    {
+      const group* gp = getgrgid(stx.stx_gid);
+      errno = 0;
+      if(!gp && errno == 0){
+        fe.health.emplace_back(HealthFlag{
+          .code = "orphan gid — user no longer exists",
+          .level = 3,
+        });
+      }
+    }
 }
 
 
@@ -235,69 +258,36 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
             PerformHealthChecks(fe, full_path, stx);
         }
 
-
-        bool is_orphan_uid = false;
         bool needs_uid_fetch = false;
-        {
-            if (cache_owner.contains(fe.uid)) {
-                if (cache_owner.at(fe.uid) == std::to_string(fe.uid)) {is_orphan_uid = true;}
-            } else {
-                needs_uid_fetch = true;
-            }
+
+        if (!cache_owner.contains(fe.uid)) {
+          needs_uid_fetch = true;
         }
 
         if (needs_uid_fetch) {
-            if (cache_owner.contains(fe.uid)) { // Double-check
-                if (cache_owner.at(fe.uid) == std::to_string(fe.uid)) {is_orphan_uid = true;}
-            } else {
                 errno = 0;
                 const passwd *pw = getpwuid(fe.uid);
                 if (pw) {
                     cache_owner[fe.uid] = pw->pw_name;
                 } else {
                     cache_owner[fe.uid] = std::to_string(fe.uid);
-                    if (errno == 0 || errno == ENOENT) {is_orphan_uid = true;}
                 }
-            }
         }
 
-        if (is_orphan_uid) {
-            fe.health.emplace_back(HealthFlag{
-                .code = "orphan uid — user no longer exists",
-                .level = 3,
-            });
-        }
-
-
-        bool is_orphan_gid = false;
         bool needs_gid_fetch = false;
 
-        if (cache_group.contains(fe.gid)) {
-          if (cache_group.at(fe.gid) == std::to_string(fe.gid)) {is_orphan_gid = true;}
-        } else {
+        if (!cache_group.contains(fe.gid)) {
           needs_gid_fetch = true;
         }
 
         if (needs_gid_fetch) {
-            if (cache_group.contains(fe.gid)) { // Double-check
-                if (cache_group.at(fe.gid) == std::to_string(fe.gid)) {is_orphan_gid = true;}
-            } else {
                 errno = 0;
                 const group *gp = getgrgid(fe.gid);
                 if (gp) {
                     cache_group[fe.gid] = gp->gr_name;
                 } else {
                     cache_group[fe.gid] = std::to_string(fe.gid);
-                    if (errno == 0 || errno == ENOENT) {is_orphan_gid = true;}
                 }
-            }
-        }
-
-        if (is_orphan_gid) {
-            fe.health.emplace_back(HealthFlag{
-                .code = "orphan gid — group no longer exists",
-                .level = 3,
-            });
         }
     }
 }
@@ -312,13 +302,13 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
 
   }
   else if(option_bool.no_health){
-      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",
-                           "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
+      std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",
+                           "TYPE","PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
                            "NAME");
   }
   else{
-      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n",
-                           "PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
+      std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n",
+                           "TYPE","PERMS", "LNK", "OWNER", "GROUP", "SIZE", "MODIFIED",
                            "NAME", "ALERTS");
   }
   std::cout << std::string(120, '-') << "\n";
@@ -366,7 +356,9 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
       size_str = std::format("{:.2f} TB",size_final);   
     }
     
-   
+    std::string type;
+    type.reserve(3);
+
     std::string display_name = e.name;
     if(MAX_LENGTH < display_name.size()){
       display_name.resize(MAX_LENGTH -3);
@@ -384,13 +376,15 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     // Color for directory name
     if(e.is_directory){
       formatted_name.append(one_str).append(display_name).append(last_str).append(padding);
+      type = "DIR";
     } 
     else{
       formatted_name = display_name;
+      type = e.is_symlink ? "SYM" : "FIL";
     }
     // Final Render
     if(option_bool.no_health){
-      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n", perms,
+      std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",type, perms,
                              e.nlinks, owner, group_str, size_str, std::string_view(str_time.data(), str_time.size()), formatted_name);
     }
     else{
@@ -401,7 +395,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
       if (join_alert.empty()){
         join_alert = "-----------";
       }
-      std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
+      std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", type, perms,
                              e.nlinks, owner, group_str, size_str, std::string_view(str_time.data(), str_time.size()), formatted_name, join_alert);
     }
   }
@@ -436,7 +430,11 @@ void LIST_HANDLER(const GroupToken &token_group) {
           }),
   .no_health = std::ranges::any_of(token_group.options, [](const auto&t){
         return t.name == "--no-health"; 
-      }) };
+      }), 
+  .stats = std::ranges::any_of(token_group.options, [](const auto&t){
+        return t.name == "--stats";
+      })
+  };
 
 
   int depth_limit = 0;
@@ -465,6 +463,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
 
   pending_dirs.push({.path = start_path, .depth = 0});
   std::string full_path; full_path.reserve(PATH_MAX);
+  
 
   while(!pending_dirs.empty()){
 
@@ -489,7 +488,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
       }
       full_path += name;
       FileEntry entry_data;
-      ProcessGeneralRecolection(entry_data,full_path,entry, current.path, option_bool, cache_owner,cache_group);
+      ProcessGeneralRecolection(entry_data,full_path,entry, current.path, option_bool, cache_owner, cache_group);
       if (entry_data.is_directory && option_bool.recursive && current.depth < depth_limit) {
         
         pending_dirs.push({
