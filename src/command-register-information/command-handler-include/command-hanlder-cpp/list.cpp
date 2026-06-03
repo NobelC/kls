@@ -186,7 +186,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
 
     {
       errno = 0;
-      struct passwd*const  pw = getpwuid(stx.stx_uid);
+      const struct passwd*const  pw = getpwuid(stx.stx_uid);
       if(!pw && errno == 0){
         fe.health.emplace_back(HealthFlag{
           .code = "orphan uid — user no longer exists",
