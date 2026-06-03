@@ -186,7 +186,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
 
     {
       errno = 0;
-      struct passwd* pw = getpwuid(stx.stx_uid);
+      struct passwd*const  pw = getpwuid(stx.stx_uid);
       if(!pw && errno == 0){
         fe.health.emplace_back(HealthFlag{
           .code = "orphan uid — user no longer exists",
@@ -195,7 +195,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
       }
     }
     {
-      const group* gp = getgrgid(stx.stx_gid);
+      const group*const  gp = getgrgid(stx.stx_gid);
       errno = 0;
       if(!gp && errno == 0){
         fe.health.emplace_back(HealthFlag{
