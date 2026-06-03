@@ -209,7 +209,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
 
 void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
                      const dirent *entry, std::string_view current_path, const Option& health,
-                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>cache_group ) {
+                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group ) {
     fe.inode = 0;
     fe.size = 0;
     fe.mode = 0;
@@ -266,7 +266,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
 
         if (needs_uid_fetch) {
                 errno = 0;
-                const passwd *pw = getpwuid(fe.uid);
+                const passwd* const pw = getpwuid(fe.uid);
                 if (pw) {
                     cache_owner[fe.uid] = pw->pw_name;
                 } else {
@@ -282,7 +282,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
 
         if (needs_gid_fetch) {
                 errno = 0;
-                const group *gp = getgrgid(fe.gid);
+                const group *const gp = getgrgid(fe.gid);
                 if (gp) {
                     cache_group[fe.gid] = gp->gr_name;
                 } else {
