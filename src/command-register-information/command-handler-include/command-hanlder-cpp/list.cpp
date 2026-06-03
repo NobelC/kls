@@ -46,7 +46,6 @@ struct Option {
   bool follow_symlink : 1;
   bool capabilities : 1;
   bool needs_metadata : 1;
-  bool healt : 1;
   bool no_health : 1;
 };
 
@@ -245,7 +244,7 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
             fe.extension = std::string(name_view.substr(dot_pos));
         }
 
-        if (health.healt) {
+        if (!health.no_health) {
             PerformHealthChecks(fe, full_path, stx);
         }
 
@@ -277,7 +276,7 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
             }
         }
 
-        if (health.healt && is_orphan_uid) {
+        if (is_orphan_uid) {
             fe.health.emplace_back(HealthFlag{
                 .code = "orphan uid — user no longer exists",
                 .level = 3,
@@ -312,7 +311,7 @@ void LongRecolection(FileEntry &fe, const std::string &full_path,
             }
         }
 
-        if (health.healt && is_orphan_gid) {
+        if (is_orphan_gid) {
             fe.health.emplace_back(HealthFlag{
                 .code = "orphan gid — group no longer exists",
                 .level = 3,
@@ -450,9 +449,6 @@ void LIST_HANDLER(const GroupToken &token_group) {
             return t.name == "--capabilities";
           }),
       .needs_metadata = false,
-      .healt = std::ranges::any_of(token_group.options, [](const auto& t){
-          return t.name == "--health";
-          }),
   .no_health = std::ranges::any_of(token_group.options, [](const auto&t){
         return t.name == "--no-health"; 
       }) };

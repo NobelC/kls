@@ -520,12 +520,6 @@ GeneralOptionLog(owner_filter);
 
   // --- SEGURIDAD ---
 
-  OptionMetaData health;
-  health.normalized_name = "--health";
-  health.category = OptionCategory::PRESENTATION;
-  health.hanlder = std::monostate{};
-  GeneralOptionLog(health);
-
   OptionMetaData no_health;
   no_health.normalized_name = "--no-health";
   no_health.category = OptionCategory::PRESENTATION;
