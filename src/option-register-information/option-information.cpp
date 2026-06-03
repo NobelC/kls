@@ -535,7 +535,17 @@ GeneralOptionLog(owner_filter);
   OptionMetaData only_alerts;
   only_alerts.normalized_name = "--only-alerts";
   only_alerts.category = OptionCategory::FILTERING;
-  only_alerts.hanlder = std::monostate{};
+  only_alerts.hanlder = FilteringProcess([](FilterStruct& filter_contex){
+      std::erase_if(filter_contex.entries,[](const FileEntry& e){
+          auto& entry_health = e.health;
+          for(const auto& temp_entry : entry_health){
+            if(!temp_entry.code.empty()){
+              return false;
+            }
+          }
+          return true;
+          });
+      });
   GeneralOptionLog(only_alerts);
 
 }

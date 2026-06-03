@@ -359,7 +359,8 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     std::string owner = cache_owner.contains(e.uid) ? cache_owner.at(e.uid) : std::to_string(e.uid);
     std::string group_str = cache_group.contains(e.gid)? cache_group.at(e.gid) : std::to_string(e.gid);
     // 3. Tiempo
-    std::string time_str = std::format("{:%b %d %H:%M}", std::chrono::system_clock::from_time_t(e.mtime));
+    std::array<char, std::size("yyyy-mm-dd")> str_time;
+    std::strftime(str_time.data(), str_time.size(), "%F%TZ", std::gmtime(&e.mtime));
     // 4. Tamaño (Manejo del valor centinela MAX que definimos)
     std::string size_str;
     auto size_final = static_cast<double>(e.size);
@@ -408,7 +409,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
     // Renderizado Final
     if(OPTION_BOOL.no_health){
       std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n", perms,
-                             e.nlinks, owner, group_str, size_str, time_str, formatted_name);
+                             e.nlinks, owner, group_str, size_str, std::string_view(str_time.data(), str_time.size()), formatted_name);
     }
     else{
       auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
@@ -419,7 +420,7 @@ void LongPrinter(const std::vector<FileEntry> &entries) {
         join_alert = "-----------";
       }
       std::cout << std::format("{:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", perms,
-                             e.nlinks, owner, group_str, size_str, time_str, formatted_name, join_alert);
+                             e.nlinks, owner, group_str, size_str, std::string_view(str_time.data(), str_time.size()), formatted_name, join_alert);
     }
   }
 }
