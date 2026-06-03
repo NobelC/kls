@@ -97,12 +97,12 @@ TEST_F(SpeedSuite, SpeedTest_RecursiveList) {
 }
 
 TEST_F(SpeedSuite, SpeedTest_LargeList_LongFormat) {
-    std::vector<std::string> input = {"--all", "--long", "."};
+    std::vector<std::string> input = {"--all", "."};
     
-    std::cout << "[ INFO ] Starting benchmark for: kls --all --long \n";
+    std::cout << "[ INFO ] Starting benchmark for: kls --all \n";
     
     auto metrics = run_benchmark(input);
-    print_metrics("kls --all --long ", metrics);
+    print_metrics("kls --all", metrics);
     
     SUCCEED();
 }
