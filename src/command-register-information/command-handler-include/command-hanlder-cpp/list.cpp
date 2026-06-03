@@ -160,7 +160,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
 
     if((stx.stx_mask & STATX_BTIME) && fe.btime > 0){
       bool is_executable = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
-      if(fe.mtime < (fe.btime + TOLERANCE_TIME) && S_ISREG(stx.stx_mode) && is_executable){
+      if((S_ISREG(stx.stx_mode) && is_executable) && (fe.mtime < (fe.btime - TOLERANCE_TIME))){
         fe.health.emplace_back(HealthFlag{
             .code = "timestomping detected — modification time (mtime) is prior to creation time (btime)",
             .level = 3,
@@ -293,7 +293,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
 }
 
 void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_bool,
-                    std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
+                    const std::unordered_map<uid_t, std::string>& cache_owner, const std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
   }
@@ -368,18 +368,15 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     auto pading_size = MAX_LENGTH - static_cast<unsigned int>(display_name.size());
     std::string padding = pading_size > 0 ? std::string(pading_size, ' ') : "" ;
 
-
-    std::string one_str = "\033[1;34m";
-    std::string last_str = "\033[0m";
     std::string formatted_name;
-    formatted_name.reserve(display_name.size() + one_str.size() + last_str.size());
+    formatted_name.reserve(display_name.size());
     // Color for directory name
     if(e.is_directory){
-      formatted_name.append(one_str).append(display_name).append(last_str).append(padding);
+      formatted_name.append(display_name).append(padding);
       type = "DIR";
     } 
     else{
-      formatted_name = display_name;
+      formatted_name.append(display_name);
       type = e.is_symlink ? "SYM" : "FIL";
     }
     // Final Render
@@ -398,6 +395,8 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
       std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} {:<30}\n", type, perms,
                              e.nlinks, owner, group_str, size_str, std::string_view(str_time.data(), str_time.size()), formatted_name, join_alert);
     }
+    formatted_name.clear();
+    display_name.clear();
   }
 }
 }// namespace
@@ -482,11 +481,11 @@ void LIST_HANDLER(const GroupToken &token_group) {
       if(!option_bool.all && name.starts_with(".")){
         continue;
       }
-      full_path = current.path;
+      full_path.append(current.path);
       if(full_path.back() != '/'){
-        full_path += "/";
+        full_path.append("/");
       }
-      full_path += name;
+      full_path.append(name);
       FileEntry entry_data;
       ProcessGeneralRecolection(entry_data,full_path,entry, current.path, option_bool, cache_owner, cache_group);
       if (entry_data.is_directory && option_bool.recursive && current.depth < depth_limit) {
@@ -496,6 +495,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
             });
       }
       file_entry.push_back(std::move(entry_data));
+      full_path.clear();
     }
     closedir(dir_ptr);
   }
