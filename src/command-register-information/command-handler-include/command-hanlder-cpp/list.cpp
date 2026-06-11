@@ -63,7 +63,6 @@ struct RecolectionShared{
   std::string name;
   std::string full_path;
   std::string current_path;
-  unsigned char entry;
 };
 
 struct DirDelete{
@@ -503,7 +502,6 @@ void LIST_HANDLER(const GroupToken &token_group) {
           .name = entry->d_name,
           .full_path = full_path,
           .current_path = current.path,
-          .entry = entry->d_type,
           });
       
       
