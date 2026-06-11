@@ -37,7 +37,7 @@ TEST(ParsingSuite, Positional){
 TEST(ParsingSuite, Mixed){
   CreatedOptionData();
   
-  std::vector<std::string> input = {"-la", "./src"};
+  std::vector<std::string> input = {"-ra", "./src"};
   auto result = tokenization(input);
   auto result_parsing = parsing(result);
   ASSERT_EQ(result_parsing.options.size(), 2);

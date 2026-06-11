@@ -4,6 +4,7 @@
 #include "../../../../include/token/token-raw-metadata.hpp"
 #include <algorithm>
 #include <cerrno>
+#include <condition_variable>
 #include <cstdio>
 #include <dirent.h>
 #include <fcntl.h>
@@ -15,9 +16,13 @@
 #include <limits>
 #include <linux/limits.h>
 #include <linux/stat.h>
+#include <memory>
 #include <numeric>
+#include <pthread.h>
 #include <pwd.h>
 #include <queue>
+#include <mutex>
+#include <pthread.h>
 #include <string>
 #include <string_view>
 #include <sys/stat.h>
@@ -30,6 +35,7 @@
 #include <linux/fs.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <condition_variable>
 
 namespace {
 
@@ -52,6 +58,26 @@ struct PendingDir {
   std::string path;
   int depth;
 };
+
+struct RecolectionShared{
+  std::string name;
+  std::string full_path;
+  std::string current_path;
+};
+
+struct DirDelete{
+  void operator()(DIR* dir) const noexcept{
+    if(dir){
+      closedir(dir);
+    }
+  }
+};
+
+using DirPtr = std::unique_ptr<DIR, DirDelete>;
+
+std::mutex mutex_queue;
+std::condition_variable condition_queue;
+bool finished_recolection = false;
 
 void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const struct statx &stx) {
 
@@ -183,33 +209,11 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
         .level = 2,
       });
     }
-
-    {
-      errno = 0;
-      struct passwd* pw = getpwuid(stx.stx_uid);
-      if(!pw && errno == 0){
-        fe.health.emplace_back(HealthFlag{
-          .code = "orphan uid — user no longer exists",
-          .level = 3,
-        });
-      }
-    }
-    {
-      const group* gp = getgrgid(stx.stx_gid);
-      errno = 0;
-      if(!gp && errno == 0){
-        fe.health.emplace_back(HealthFlag{
-          .code = "orphan gid — user no longer exists",
-          .level = 3,
-        });
-      }
-    }
 }
 
 
 void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
-                     const dirent *entry, std::string_view current_path, const Option& health,
-                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>cache_group ) {
+                     std::string_view name, std::string_view current_path, const Option& health) {
     fe.inode = 0;
     fe.size = 0;
     fe.mode = 0;
@@ -222,7 +226,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     fe.has_capabilities = false;
     fe.mtime = 0;
     fe.btime = 0;
-    fe.name = entry->d_name;
+    fe.name = name;
     fe.path = current_path;
     fe.symlink_target.clear();
     fe.extension.clear();
@@ -256,38 +260,6 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
 
         if (!health.no_health) {
             PerformHealthChecks(fe, full_path, stx);
-        }
-
-        bool needs_uid_fetch = false;
-
-        if (!cache_owner.contains(fe.uid)) {
-          needs_uid_fetch = true;
-        }
-
-        if (needs_uid_fetch) {
-                errno = 0;
-                const passwd *pw = getpwuid(fe.uid);
-                if (pw) {
-                    cache_owner[fe.uid] = pw->pw_name;
-                } else {
-                    cache_owner[fe.uid] = std::to_string(fe.uid);
-                }
-        }
-
-        bool needs_gid_fetch = false;
-
-        if (!cache_group.contains(fe.gid)) {
-          needs_gid_fetch = true;
-        }
-
-        if (needs_gid_fetch) {
-                errno = 0;
-                const group *gp = getgrgid(fe.gid);
-                if (gp) {
-                    cache_group[fe.gid] = gp->gr_name;
-                } else {
-                    cache_group[fe.gid] = std::to_string(fe.gid);
-                }
         }
     }
 }
@@ -460,20 +432,63 @@ void LIST_HANDLER(const GroupToken &token_group) {
     return;
   }
 
+
+//================================================================================================================================================================
+//Process of Recolection 
+
   pending_dirs.push({.path = start_path, .depth = 0});
   std::string full_path; full_path.reserve(PATH_MAX);
-  
+
+  std::queue<std::vector<RecolectionShared>> queue_shared; 
+  std::vector<RecolectionShared> batch;
+  batch.reserve(512);
+
+    auto thread_work = [&](){
+    FileEntry fe;
+    while(true){
+      std::vector<RecolectionShared> local_lote;
+      {
+        std::unique_lock<std::mutex> lock_guard(mutex_queue);
+        condition_queue.wait(lock_guard, [&]{
+            return !queue_shared.empty()  || finished_recolection;
+        });
+
+        if(queue_shared.empty() && finished_recolection){
+          break;
+        }
+
+        local_lote = std::move(queue_shared.front());
+        queue_shared.pop();
+      }
+      for(const auto& entry : local_lote){
+        ProcessGeneralRecolection(fe,entry.full_path,entry.name,entry.current_path,option_bool);
+        file_entry.emplace_back(std::move(fe));
+        fe.clear();
+      }
+    }
+
+  };
+
+  std::thread thread_consumer(thread_work);
+
 
   while(!pending_dirs.empty()){
-
+    
     PendingDir current = std::move(pending_dirs.front());
     pending_dirs.pop();
 
-    DIR* dir_ptr = opendir(current.path.c_str());
+    DirPtr dir_ptr(opendir(current.path.c_str()));
     struct dirent *entry;
     if(!dir_ptr){continue;}
+    
+    
+    full_path.append(current.path);
+    if(full_path.back() != '/'){
+      full_path.append("/");
+    }
+    size_t base_len = full_path.size(); 
 
-    while((entry = readdir(dir_ptr)) != nullptr){
+    while((entry = readdir(dir_ptr.get())) != nullptr){
       std::string_view name(entry->d_name);
       if(name == "." || name == ".."){
         continue;
@@ -481,25 +496,54 @@ void LIST_HANDLER(const GroupToken &token_group) {
       if(!option_bool.all && name.starts_with(".")){
         continue;
       }
-      full_path.append(current.path);
-      if(full_path.back() != '/'){
-        full_path.append("/");
-      }
       full_path.append(name);
-      FileEntry entry_data;
-      ProcessGeneralRecolection(entry_data,full_path,entry, current.path, option_bool, cache_owner, cache_group);
-      if (entry_data.is_directory && option_bool.recursive && current.depth < depth_limit) {
-        
+
+      batch.push_back({
+          .name = entry->d_name,
+          .full_path = full_path,
+          .current_path = current.path,
+          });
+      
+      
+      bool dir_entry = entry->d_type == DT_UNKNOWN ? std::filesystem::is_directory(full_path) : (entry->d_type == DT_DIR ? true : false); 
+
+      if (dir_entry && option_bool.recursive && current.depth < depth_limit) {  
         pending_dirs.push({
             .path = full_path, .depth = current.depth + 1,
-            });
+        });
       }
-      file_entry.push_back(std::move(entry_data));
-      full_path.clear();
+      full_path.resize(base_len);
+
+      if(batch.size() >= 512){
+        {
+          std::lock_guard<std::mutex> lock(mutex_queue);
+          queue_shared.push(std::move(batch));
+          condition_queue.notify_one();
+        }
+        batch.clear();
+      }
     }
-    closedir(dir_ptr);
+
+    full_path.clear();
   }
-  
+
+  if(!batch.empty()){
+    {
+        std::lock_guard<std::mutex> lock(mutex_queue);
+        queue_shared.push(std::move(batch));
+        condition_queue.notify_one();
+      }
+    }
+
+  {
+    std::lock_guard<std::mutex> lock(mutex_queue);
+    finished_recolection = true;
+    condition_queue.notify_all();
+  }
+
+  thread_consumer.join();
+
+  //==================================================================================================================================================================
 
   //-----------------------------------------------------------------------------------------
   auto run_pipeline = [&](OptionCategory target_cat) {
@@ -524,4 +568,3 @@ void LIST_HANDLER(const GroupToken &token_group) {
 
   ProcessPrinter(file_entry, option_bool, cache_owner, cache_group);
 }
-

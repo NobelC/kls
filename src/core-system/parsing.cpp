@@ -10,16 +10,16 @@
 GroupToken parsing(const std::vector<Token> &token_raw) {
   GroupToken token_clasificated;
 
-  // Tratamiento y verificacion de existencia
+  // Handling and verification of existence
   for (size_t pos = 0; pos < token_raw.size(); pos++) {
     const auto &individual_token = token_raw[pos];
 
-    // Comprobar si una opcion existe
+    // Check is an option exists
     if (individual_token.type == TypeToken::OPTION_NOT_NORMALIZED) {
-      // opciones largas
+      // Long Option
       if (individual_token.name.starts_with("--")) {
         const auto equal_pos = individual_token.name.find('=');
-        // Opciones largas sin signo de igual
+        // Long Option without equal sign
         if (equal_pos == std::string::npos) {
           const auto &data_token = GetOptionData(individual_token.name);
           if (data_token == nullptr) {
@@ -27,7 +27,7 @@ GroupToken parsing(const std::vector<Token> &token_raw) {
             token_clasificated.is_valid = false;
             return token_clasificated;
           }
-          // Para opciones largas sin igual pero que requieren valor
+          // For long options without a match but that require a value
           if (data_token->data_type != TypeDataReceived::NONE) {
             if (pos + 1 < token_raw.size() &&
                 token_raw[pos + 1].type == TypeToken::LITERAL) {
@@ -52,7 +52,7 @@ GroupToken parsing(const std::vector<Token> &token_raw) {
           });
           continue;
         } else {
-          // Para opciones largas las cuales tienen un signo de igual
+          // For long options with equals sign
           const auto &data_token =
               GetOptionData(individual_token.name.substr(0, equal_pos));
           if (data_token == nullptr) {
@@ -68,7 +68,7 @@ GroupToken parsing(const std::vector<Token> &token_raw) {
           continue;
         }
       }
-      // Para opciones cortas con o sin igual o agrupas con y sin igual
+      // For short options with or without an equals sign, grouped with or without an equals sign
       for (size_t i = 0; i < individual_token.name.size(); i++) {
         if (individual_token.name[i] == '-') {
           continue;
@@ -93,8 +93,8 @@ GroupToken parsing(const std::vector<Token> &token_raw) {
               break;
             }
           }
-          // Para caso especial de -o que requiera valor (para funciones
-          // agrupadas mandara error si no hay valor y se necesita)
+          // For the special case of -o that requires a value (if 
+          // grouped, it will raise an error if there is no value and it needs one)
           else if (i + 1 >= individual_token.name.size() &&
                    pos + 1 < token_raw.size() &&
                    token_raw[pos + 1].type == TypeToken::LITERAL) {
