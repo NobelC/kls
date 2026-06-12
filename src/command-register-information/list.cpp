@@ -1,8 +1,8 @@
-#include "../../../../include/option/option-implementation.hpp"
-#include "../../../../include/option/option-raw-metadata.hpp"
-#include "../../../../include/token/group-token.hpp"
-#include "../../../../include/token/token-raw-metadata.hpp"
-#include "../../../health-register/health-register.hpp"
+#include "../../include/option/option-implementation.hpp"
+#include "../../include/option/option-raw-metadata.hpp"
+#include "../../include/token/group-token.hpp"
+#include "../../include/token/token-raw-metadata.hpp"
+#include "../health-register/health-register.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <condition_variable>
