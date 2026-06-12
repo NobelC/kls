@@ -26,9 +26,20 @@ enum class OptionCategory : std::uint8_t {
   GLOBAL =6,
 };
 
+struct ID{
+  uint32_t val;
+  explicit constexpr ID(const char (&s)[5]) : val(
+      (static_cast<uint32_t>(s[0]) << 24) |
+      (static_cast<uint32_t>(s[1]) << 16) |
+      (static_cast<uint32_t>(s[2]) << 8)  |
+      (static_cast<uint32_t>(s[3])
+      )){}
+  bool operator==(const ID& other) const {return val == other.val;}
+};
 
 struct HealthFlag {
-  std::string code; 
+  const char* message; 
+  ID id;
   uint8_t level;
 };
 
