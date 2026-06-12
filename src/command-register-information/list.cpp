@@ -200,7 +200,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     }
 }
 
-void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
+void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_bool,
                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
