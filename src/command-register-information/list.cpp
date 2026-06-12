@@ -30,6 +30,7 @@
 #include <sys/types.h>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <ctime>
 #include <sys/ioctl.h>
