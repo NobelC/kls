@@ -42,6 +42,8 @@ set(CORE_SOURCES
     src/option-register-information/special-option/help-handler.cpp
     src/option-register-information/special-option/version-handler.cpp
     src/command-register-information/command-handler-include/command-hanlder-cpp/list.cpp
+    src/health-register/health-register.cpp
+    src/health-register/health-register-table.cpp
 )
 
 # 3. Biblioteca Core

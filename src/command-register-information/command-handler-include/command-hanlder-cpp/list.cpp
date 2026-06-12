@@ -2,6 +2,7 @@
 #include "../../../../include/option/option-raw-metadata.hpp"
 #include "../../../../include/token/group-token.hpp"
 #include "../../../../include/token/token-raw-metadata.hpp"
+#include "../../../health-register/health-register.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <condition_variable>
@@ -81,136 +82,70 @@ bool finished_recolection = false;
 
 void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const struct statx &stx) {
 
+    auto AddFlag = [&](ID id) {
+        const HealthFlag* flag = GetHealthFlag(id);
+        if (flag) {fe.health.emplace_back(*flag);}
+    };
+    
     if ((stx.stx_mode & S_ISUID) && (stx.stx_mode & S_IWOTH)) {
-        fe.health.emplace_back(HealthFlag{
-            .code = "CRITICAL: SUID + world-writable — allows any user to gain file owner privileges",
-            .level = 5,
-        });
-    } else if (stx.stx_mode & S_ISUID) {
-        fe.health.emplace_back(HealthFlag{
-            .code = "SUID bit set — executes as file owner",
-            .level = 3,
-        });
+      AddFlag(ID("SU02"));
     }
-
+    
+    else if (stx.stx_mode & S_ISUID) {
+      AddFlag(ID("SU01"));
+    }
+    
     if (stx.stx_mode & S_ISGID) {
-        fe.health.emplace_back(HealthFlag{
-            .code = "SGID bit set — executes as file group",
-            .level = 3,
-        });
-    }
-
-    if (stx.stx_mode & S_IWOTH) {
-        fe.health.emplace_back(HealthFlag{
-            .code = "world-writable — any user can modify this file",
-            .level = 3,
-        });
+      AddFlag(ID("SG01"));
     }
 
     if (S_ISREG(stx.stx_mode)) {
         if (stx.stx_mode & S_ISVTX) {
-            fe.health.emplace_back(HealthFlag{
-                .code = "sticky bit set on non-directory — obsolete or suspicious configuration",
-                .level = 2,
-            });
+          AddFlag(ID("SU22"));
         }
-
+        
         bool has_exec = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
-        bool has_no_read = (stx.stx_mode & (S_IRUSR | S_IRGRP | S_IROTH)) == 0;
-
-        if(has_exec && (stx.stx_mode & (S_IWGRP | S_IWOTH))){
-            fe.health.emplace_back(HealthFlag{
-                .code = "writable executable — file has execute permissions but is group or world writable, allowing code injection",
-                .level = 4,
-            });
-        }
-
-        if (has_exec && has_no_read) {
-            fe.health.emplace_back(HealthFlag{
-                .code = "executable without read bit — suspicious permission",
-                .level = 3,
-            });
+        if(has_exec && (stx.stx_mode & (S_IWGRP | S_IWOTH))) {
+          AddFlag(ID("SU08"));
         }
 
         int fd = open(full_path.c_str(), O_RDONLY | O_NONBLOCK);
         if (fd != -1) {
             int flags = 0;
             if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != -1) {
-              if(flags & FS_IMMUTABLE_FL){
-                fe.health.emplace_back(HealthFlag{
-                    .code = "immutable attribute set — file cannot be modified or deleted",
-                    .level = 3,
-                });
-              }
-
-              if(flags & FS_APPEND_FL){
-                fe.health.emplace_back(HealthFlag{
-                    .code = "append-only attribute set — file can only be opened in append mode for writing; deletion and truncation blocked",
-                    .level = 3,
-                });
-              }
+                if(flags & FS_IMMUTABLE_FL) {
+                  AddFlag(ID("IMMU"));
+                }                
+                if(flags & FS_APPEND_FL){
+                  AddFlag(ID("APND"));
+                }
             }
             close(fd);
         }
     }
 
-    if (fe.is_symlink) {
-        struct statx stx_target;
-        if (statx(AT_FDCWD, full_path.c_str(), 0, STATX_TYPE, &stx_target) == -1) {
-            if (errno == ENOENT || errno == ENOTDIR || errno == ELOOP) {
-                fe.health.emplace_back(HealthFlag{
-                    .code = "broken symlink — target does not exist",
-                    .level = 3,
-                });
-                fe.symlink_broken = true;
-            }
-        }
+    if(fe.is_directory && (stx.stx_mode & S_IWOTH) && !(stx.stx_mode & S_ISVTX)){
+      AddFlag(ID("SG02"));
     }
 
-    if(fe.is_directory){
-      if((stx.stx_mode & S_IWOTH) && !(stx.stx_mode & S_ISVTX)){
-        fe.health.emplace_back(HealthFlag{
-            .code = "world-writable directory without sticky bit — arbitrary users can delete, move, or hijack files owned by others",
-            .level = 4,
-            });
-      }
+    if (fe.mtime > (TIME_NOW + TOLERANCE_TIME)){
+      AddFlag(ID("SU13"));
     }
 
-    // 4. Anomalías temporales
-    if (fe.mtime > (TIME_NOW + TOLERANCE_TIME)) {
-        fe.health.emplace_back(HealthFlag{
-            .code = "future timestamp — mtime is ahead of system clock",
-            .level = 3,
-        });
+    if((stx.stx_mask & STATX_BTIME) && fe.btime > 0 && S_ISREG(stx.stx_mode) && 
+       (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mtime < (fe.btime - TOLERANCE_TIME)))
+      {
+        AddFlag(ID("SU14"));
+      }
+          
+    if((S_ISCHR(stx.stx_mode) || S_ISBLK(stx.stx_mode)) && !full_path.starts_with("/dev/")){
+      AddFlag(ID("HWBD"));
     }
 
-    if((stx.stx_mask & STATX_BTIME) && fe.btime > 0){
-      bool is_executable = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
-      if((S_ISREG(stx.stx_mode) && is_executable) && (fe.mtime < (fe.btime - TOLERANCE_TIME))){
-        fe.health.emplace_back(HealthFlag{
-            .code = "timestomping detected — modification time (mtime) is prior to creation time (btime)",
-            .level = 3,
-        });
-      }
-    }
-    
-    if((S_ISCHR(stx.stx_mode)) || (S_ISBLK(stx.stx_mode))) {
-      if(!full_path.starts_with("/dev/")){
-        fe.health.emplace_back(HealthFlag{
-            .code = "device node outside /dev — potential raw hardware/memory access backdoor",
-            .level = 5,
-        });
-      }
-    }
-    bool is_executable = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
-    if((stx.stx_mode & (S_ISUID | S_ISGID)) && !is_executable){
-      fe.health.emplace_back(HealthFlag{
-        .code = "SUID/SGID set but file is not executable — useless configuration, indicates error or broken exploit",
-        .level = 2,
-      });
+    if((stx.stx_mode & (S_ISUID | S_ISGID)) && !(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH))){
+      AddFlag(ID("SU03"));
     }
 }
-
 
 void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
                      std::string_view name, std::string_view current_path, const Option& health) {
@@ -264,8 +199,8 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     }
 }
 
-void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_bool,
-                    const std::unordered_map<uid_t, std::string>& cache_owner, const std::unordered_map<uid_t, std::string>& cache_group) {
+void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
+                    std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
   }
@@ -299,9 +234,61 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     perms += (e.mode & S_IROTH) ? "r" : "-";
     perms += (e.mode & S_IWOTH) ? "w" : "-";
     perms += (e.mode & S_IXOTH) ? "x" : "-";
+    
 
-    std::string owner = cache_owner.contains(e.uid) ? cache_owner.at(e.uid) : std::to_string(e.uid);
-    std::string group_str = cache_group.contains(e.gid)? cache_group.at(e.gid) : std::to_string(e.gid);
+    
+    std::string owner;
+    {
+      if(cache_owner.contains(e.uid)){
+        owner = cache_owner.at(e.uid);
+      }
+      else{
+        errno = 0;
+        const passwd* pw = getpwuid(e.uid);
+        if(pw){
+          cache_owner[e.uid] = pw->pw_name;
+          owner = pw->pw_name;
+        }
+        else{
+          cache_owner[e.uid] = std::to_string(e.uid);
+          /*
+          if(errno == 0 || errno == ENOENT){
+            e.health.emplace_back(HealthFlag{
+                .code = "orphan uid — user no longer exists",
+                .level = 3,
+            });
+          }
+          */
+        }
+      }
+    }
+    std::string group_str;
+    {
+      if(cache_group.contains(e.gid)){
+        group_str = cache_group.at(e.gid);
+      }
+      else{
+        errno = 0;
+        const group* gp = getgrgid(e.gid);
+        if(gp){
+          cache_group[e.gid] = gp->gr_name;
+          group_str = gp->gr_name;
+        }
+        else{
+          cache_group[e.gid] = std::to_string(e.gid);
+          /*
+          if(errno == 0 || errno == ENOENT){
+            e.health.emplace_back(HealthFlag{
+                .code = "orphan gid — user no longer exists",
+                .level = 3,
+            });
+          }
+          */
+        }
+      }
+    }
+    
+
     // 3. Time
     std::array<char, std::size("yyyy-mm-dd")> str_time;
     std::strftime(str_time.data(), str_time.size(), "%F", std::gmtime(&e.mtime));
@@ -351,6 +338,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
       formatted_name.append(display_name);
       type = e.is_symlink ? "SYM" : "FIL";
     }
+
     // Final Render
     if(option_bool.no_health){
       std::cout << std::format("{:<5} {:<10} {:<3} {:<8} {:<8} {:<10} {:<12} {:<30} \n",type, perms,
@@ -359,7 +347,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     else{
       auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
         [](const std::string& acc, const HealthFlag& s){
-          return acc.empty() ? s.code : acc + " | " + s.code; 
+          return acc.empty() ? s.message : acc + " | " + s.message; 
         });
       if (join_alert.empty()){
         join_alert = "-----------";
@@ -374,6 +362,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
 }// namespace
 
 void LIST_HANDLER(const GroupToken &token_group) {
+  CreatedHealthFlags();
   std::vector<FileEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
