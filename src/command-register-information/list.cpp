@@ -3,6 +3,7 @@
 #include "../../include/token/group-token.hpp"
 #include "../../include/token/token-raw-metadata.hpp"
 #include "../health-register/health-register.hpp"
+#include "../white-list-routes/white-list-routes.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <condition_variable>
@@ -81,7 +82,7 @@ std::mutex mutex_queue;
 std::condition_variable condition_queue;
 bool finished_recolection = false;
 
-void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const struct statx &stx) {
+void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct statx &stx) {
 
     auto AddFlag = [&](ID id) {
         const HealthFlag* flag = GetHealthFlag(id);
@@ -110,7 +111,7 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
           AddFlag(ID("SU08"));
         }
 
-        int fd = open(full_path.c_str(), O_RDONLY | O_NONBLOCK);
+        int fd = open(std::string(full_path).c_str(), O_RDONLY | O_NONBLOCK);
         if (fd != -1) {
             int flags = 0;
             if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != -1) {
@@ -145,6 +146,10 @@ void PerformHealthChecks(FileEntry &fe, const std::string &full_path, const stru
 
     if((stx.stx_mode & (S_ISUID | S_ISGID)) && !(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH))){
       AddFlag(ID("SU03"));
+    }
+
+    if(!IsKnowPath(full_path)){
+      AddFlag(ID("SU04"));
     }
 }
 

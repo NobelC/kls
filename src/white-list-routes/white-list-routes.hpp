@@ -1,4 +1,5 @@
 #pragma once
+#include <string_view>
 
 void CreatedWhiteList();
-bool IsKnowPath();
+bool IsKnowPath(std::string_view path);
