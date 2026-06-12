@@ -1,6 +1,6 @@
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/token/token-raw-metadata.hpp"
+#include "../../include/transparent-hash.hpp"
 #include <algorithm>
 #include <any>
 #include <array>
@@ -246,8 +246,7 @@ void CreatedOptionData() {
       return;
     }
 
-    std::unordered_set<std::string_view, transparent_hash, std::equal_to<>>
-        table_extension;
+    std::unordered_set<std::string_view, transparent_hash, transparent_equal> table_extension;
     size_t start = 0;
     size_t end = 0;
 
