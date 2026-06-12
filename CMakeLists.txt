@@ -44,6 +44,7 @@ set(CORE_SOURCES
     src/command-register-information/list.cpp
     src/health-register/health-register.cpp
     src/health-register/health-register-table.cpp
+    src/white-list-routes/white-list-routes.cpp
 )
 
 # 3. Biblioteca Core
