@@ -2,4 +2,4 @@
 #include <string_view>
 
 void CreatedWhiteList();
-bool IsKnowPath(std::string_view path);
+[[nodiscard]] bool IsKnowPath(std::string_view path) noexcept;
