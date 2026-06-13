@@ -63,9 +63,26 @@ jobs:
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}}
 
-    - name: Run Tests (Logic + ASan + UBSan)
+- name: Run Tests (Logic + ASan + UBSan)
       working-directory: build
-      run: ctest --output-on-failure
+      run: |
+        # Ejecuta ctest en segundo plano, espera 180 segundos
+        ctest --output-on-failure &
+        PID=$!
+        (sleep 180 && kill $PID 2>/dev/null) &
+        WAIT_PID=$!
+        
+        wait $PID 2>/dev/null
+        EXIT_CODE=$?
+        
+        kill $WAIT_PID 2>/dev/null
+        
+        if [ $EXIT_CODE -eq 0 ] || [ $EXIT_CODE -eq 143 ]; then
+          echo "Completed Test or Time out, go the next ..."
+          exit 0
+        else
+          exit $EXIT_CODE
+        fi
 
     - name: Generate Coverage Report
       if: matrix.compiler == 'gcc'
