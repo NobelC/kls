@@ -8,6 +8,7 @@
 #include <cerrno>
 #include <condition_variable>
 #include <cstdio>
+#include <cstdlib>
 #include <dirent.h>
 #include <fcntl.h>
 #include <filesystem>
@@ -39,8 +40,10 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <condition_variable>
+#include <sys/xattr.h>
 
 namespace {
+constexpr time_t ONE_DAY_IN_SECONDS = 86400;
 
 struct Option {
   bool recursive : 1;
@@ -150,6 +153,81 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
 
     if(!IsKnowPath(full_path)){
       AddFlag(ID("SU04"));
+    }
+
+    if(full_path.starts_with("/tmp") || full_path.starts_with("/var")){
+      AddFlag(ID("SU20"));
+    }
+
+    if(full_path.starts_with("/home")){
+      AddFlag(ID("SU21"));
+    }
+
+    if(fe.uid != 0){
+      AddFlag(ID("SU05"));
+    }
+
+    if(getpwuid(fe.uid) == nullptr){
+      AddFlag(ID("SU11"));
+    }
+
+    if(getgrgid(fe.gid) == nullptr){
+      AddFlag(ID("SG05"));
+    }
+    
+    {
+      int fd = open(std::string(full_path).c_str(), O_RDONLY);
+      if(fd != -1){
+        unsigned char buffer[4] = {0};
+        ssize_t n = read(fd,buffer,4);
+        close(fd);
+
+        if(n >= 0){
+          if(buffer[0] == '#' && buffer[1] == '!'){
+            AddFlag(ID("SU06"));
+          }
+          else if((stx.stx_mode & S_ISUID) && (n < 4 || !(buffer[0] == 0x7f && buffer[1] == 'E' && 
+              buffer[2] == 'L' && buffer[3] == 'F'))){
+            AddFlag(ID("SU16"));
+          }
+        }
+      }
+    }
+
+    if(stx.stx_mode & S_IXOTH){
+      AddFlag(ID("SU07"));
+    }
+
+    if(S_ISLNK(stx.stx_mode) && (stx.stx_mode  & S_ISUID)){
+      AddFlag(ID("SU09"));
+    }
+
+    if(S_ISDIR(stx.stx_mode) && (stx.stx_mode & S_ISUID)){
+      AddFlag(ID("SU10"));
+    }
+
+    if(fe.nlinks > 1){
+      AddFlag(ID("SU17"));
+    }
+
+    if(!(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (stx.stx_mode & (S_IRUSR | S_IRGRP | S_IROTH))){
+      AddFlag(ID("SU18"));
+    }
+
+    if((stx.stx_mode & S_ISGID) && (stx.stx_mode & S_IWOTH)){
+      AddFlag(ID("SG03"));
+    }
+
+    if((stx.stx_mode & S_ISGID) && (stx.stx_mode & S_IWGRP)){
+      AddFlag(ID("SG04"));
+    }
+
+    if(fe.uid == 0 && ((std::abs(TIME_NOW - fe.mtime)) < ONE_DAY_IN_SECONDS)){
+      AddFlag(ID("SU12"));
+    }
+
+    if(getxattr(std::string(full_path).c_str(),"security.capability", nullptr,0 ) > 0){
+      AddFlag(ID("SU19"));
     }
 }
 
