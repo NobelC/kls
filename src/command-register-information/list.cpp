@@ -2,7 +2,7 @@
 #include "../../include/option/option-raw-metadata.hpp"
 #include "../../include/token/group-token.hpp"
 #include "../../include/token/token-raw-metadata.hpp"
-#include "../health-register/health-register.hpp"
+#include "../SUID-SGID-register/health-register.hpp"
 #include "../white-list-routes/white-list-routes.hpp"
 #include <algorithm>
 #include <cerrno>
