@@ -7,7 +7,6 @@ void CreatedHealthFlags() {
     GeneralHealthFlagsLog({.message = "SUID bit set on world-writable file", .id = ID("SU02"), .level = 5});
     GeneralHealthFlagsLog({.message = "SUID bit set on non-executable file", .id = ID("SU03"), .level = 2});
 
-
     GeneralHealthFlagsLog({.message = "SUID binary found outside standard system directories", .id = ID("SU04"), .level = 5});
     GeneralHealthFlagsLog({.message = "SUID bit set on file not owned by root", .id = ID("SU05"), .level = 4});
     GeneralHealthFlagsLog({.message = "SUID bit set on interpreted script", .id = ID("SU06"), .level = 3});
@@ -27,7 +26,8 @@ void CreatedHealthFlags() {
     GeneralHealthFlagsLog({.message = "SUID binary in /tmp or /var", .id = ID("SU20"), .level = 5});
     GeneralHealthFlagsLog({.message = "SUID binary in user home directory", .id = ID("SU21"), .level = 5});
     GeneralHealthFlagsLog({.message = "SUID binary also carries the sticky bit", .id = ID("SU22"), .level = 2});
-
+    GeneralHealthFlagsLog({.message = "SUID binary user no longer exists ", .id = ID("SU23"), .level = 2});
+    GeneralHealthFlagsLog({.message = "SUID binary group no longer exists", .id = ID("SU24"), .level = 2});
 
     GeneralHealthFlagsLog({.message = "SGID bit set", .id = ID("SG01"), .level = 3});
     GeneralHealthFlagsLog({.message = "SGID bit set on world-writable directory", .id = ID("SG02"), .level = 4});

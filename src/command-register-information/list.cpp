@@ -282,7 +282,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     }
 }
 
-void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_bool,
+void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
@@ -303,7 +303,12 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
   }
   std::cout << std::string(120, '-') << "\n";
 
-  for (const auto &e : entries) {
+  for (auto &e : entries) {
+    auto AddFlag = [&](ID id) {
+        const HealthFlag* flag = GetHealthFlag(id);
+        if (flag) { e.health.emplace_back(*flag); }
+    };
+
     // 1. Perms (Mode)
     std::string perms;
     perms += (e.mode & S_IRUSR) ? "r" : "-";
@@ -334,14 +339,11 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
         }
         else{
           cache_owner[e.uid] = std::to_string(e.uid);
-          /*
-          if(errno == 0 || errno == ENOENT){
-            e.health.emplace_back(HealthFlag{
-                .code = "orphan uid — user no longer exists",
-                .level = 3,
-            });
+          if(!option_bool.no_health){ 
+            if(errno == 0 || errno == ENOENT){
+              AddFlag(ID("SU23"));
+            }
           }
-          */
         }
       }
     }
@@ -359,14 +361,11 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
         }
         else{
           cache_group[e.gid] = std::to_string(e.gid);
-          /*
-          if(errno == 0 || errno == ENOENT){
-            e.health.emplace_back(HealthFlag{
-                .code = "orphan gid — user no longer exists",
-                .level = 3,
-            });
+          if(!option_bool.no_health){
+            if(errno == 0 || errno == ENOENT){
+              AddFlag(ID("SU24"));
+            }
           }
-          */
         }
       }
     }
@@ -430,7 +429,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     else{
       auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
         [](const std::string& acc, const HealthFlag& s){
-          return acc.empty() ? s.message : acc + " | " + s.message; 
+          return acc.empty() ? s.id.to_string() : acc + " | " + s.id.to_string(); 
         });
       if (join_alert.empty()){
         join_alert = "-----------";

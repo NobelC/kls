@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <sys/types.h>
 #include <unordered_map>
 #include <variant>
@@ -27,14 +28,38 @@ enum class OptionCategory : std::uint8_t {
 };
 
 struct ID{
-  uint32_t val;
+  private:
+    uint32_t val;
+  public:
   explicit constexpr ID(const char (&s)[5]) : val(
       (static_cast<uint32_t>(s[0]) << 24) |
       (static_cast<uint32_t>(s[1]) << 16) |
       (static_cast<uint32_t>(s[2]) << 8)  |
       (static_cast<uint32_t>(s[3])
       )){}
+
+  explicit constexpr ID(std::string_view s) : val(
+      s.size() != 4 ? throw "Error : Code size incorrecto" : 
+      (static_cast<uint32_t>(s[0])) << 24 |
+      (static_cast<uint32_t>(s[1])) << 16 |
+      (static_cast<uint32_t>(s[2])) << 8  |
+      (static_cast<uint32_t>(s[3]))
+ ) {}
+  
+  [[nodiscard]] uint32_t get_value() const{
+    return val;
+  }
+
   bool operator==(const ID& other) const {return val == other.val;}
+  std::string to_string() const{
+    char buffer[4] = {
+      static_cast<char>(val >> 24 &  0xFF),
+      static_cast<char>(val >> 16 &  0xFF),
+      static_cast<char>(val >> 8  &  0xFF),
+      static_cast<char>(val       &  0xFF)
+    };
+    return buffer;
+  }
 };
 
 struct HealthFlag {
@@ -114,11 +139,14 @@ using FilteringProcess = std::function<void(FilterStruct &)>;
 using PresentationProcess = std::function<void(PresentationStruct &,
                                       std::unordered_map<uid_t,std::string>& ,
                                       std::unordered_map<uid_t,std::string>&)>;
+using GlobalOptionProcess = std::function<void(std::string_view& )>;
+
 
 using OptionHandler =
     std::variant<std::monostate,                          
                  FilteringProcess,    
-                 PresentationProcess 
+                 PresentationProcess,
+                 GlobalOptionProcess
                  >;
 
 struct OptionMetaData {
