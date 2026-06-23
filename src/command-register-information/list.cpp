@@ -53,6 +53,7 @@ struct Option {
   bool capabilities : 1;
   bool no_health : 1;
   bool stats : 1;
+  bool explain : 1;
 };
 
 constexpr unsigned int MAX_LENGTH = 30;
@@ -441,6 +442,17 @@ void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
     display_name.clear();
   }
 }
+
+[[nodiscard]] constexpr std::string_view get_param_option_value(const std::vector<Token>& params, std::string_view target_name) noexcept {
+  auto it = std::ranges::find(params, target_name, &Token::name);
+  if(it != params.end()) [[likely]] {
+    return it->value;
+  }
+  return {};
+}
+
+
+
 }// namespace
 
 void LIST_HANDLER(const GroupToken &token_group) {
@@ -475,7 +487,10 @@ void LIST_HANDLER(const GroupToken &token_group) {
       }), 
   .stats = std::ranges::any_of(token_group.options, [](const auto&t){
         return t.name == "--stats";
-      })
+      }),
+  .explain = std::ranges::any_of(token_group.options, [](const auto& t){
+      return t.name == "--explain-code";
+      }),
   };
 
 
@@ -503,6 +518,24 @@ void LIST_HANDLER(const GroupToken &token_group) {
     return;
   }
 
+  if(option_bool.explain){
+    auto code = get_param_option_value(token_group.options,"--explain-code");
+    std::vector<std::string_view> result_process;
+    size_t count_element = static_cast<size_t>(std::count(code.begin(), code.end(), ','));
+    result_process.reserve(count_element + 1);
+
+    size_t pos = 0;
+    while((pos = code.find(',')) != std::string_view::npos){
+      result_process.push_back(code.substr(0,pos));
+      code.remove_prefix(pos + 1);
+    }
+    result_process.push_back(code);
+
+    for(const auto& flag : result_process){
+      PrintHealthFlags(ID{flag});
+    }
+    return ;
+  }
 
 //================================================================================================================================================================
 //Process of Recolection 

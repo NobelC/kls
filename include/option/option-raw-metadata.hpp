@@ -51,15 +51,17 @@ struct ID{
   }
 
   bool operator==(const ID& other) const {return val == other.val;}
-  std::string to_string() const{
-    char buffer[4] = {
-      static_cast<char>(val >> 24 &  0xFF),
-      static_cast<char>(val >> 16 &  0xFF),
-      static_cast<char>(val >> 8  &  0xFF),
-      static_cast<char>(val       &  0xFF)
+  
+ [[nodiscard]] std::string to_string() const {
+    const char buffer[4] = {
+        static_cast<char>(val >> 24 & 0xFF),
+        static_cast<char>(val >> 16 & 0xFF),
+        static_cast<char>(val >> 8  & 0xFF),
+        static_cast<char>(val       & 0xFF)
     };
-    return buffer;
-  }
+    // El constructor std::string(ptr, count) no necesita \0
+    return std::string(buffer, 4); 
+}
 };
 
 struct HealthFlag {

@@ -129,25 +129,8 @@ void CreatedOptionData() {
   explain_code.normalized_name = "--explain-code";
   explain_code.conflict_name = {};
   explain_code.data_type = TypeDataReceived::STRING;
-  explain_code.category = OptionCategory::GLOBAL;
-  explain_code.hanlder = GlobalOptionProcess{[](std::string_view& code){
-    std::vector<std::string_view> result_process;
-    size_t count_element = static_cast<size_t>(std::count(code.begin(), code.end(), ','));
-    result_process.reserve(count_element + 1);
-
-    size_t pos = 0;
-    while((pos = code.find(',')) != std::string_view::npos){
-      result_process.push_back(code.substr(0,pos));
-      code.remove_prefix(pos + 1);
-    }
-    result_process.push_back(code);
-
-    for(const auto& id : result_process){
-      auto flag = GetHealthFlag(ID(id));
-
-    }
-
-  }};
+  explain_code.category = OptionCategory::PRESENTATION;
+  explain_code.hanlder = std::monostate{}; 
   GeneralOptionLog(explain_code);
 
   // --- RECOLECCIÓN Y FILTRADO ---
