@@ -1,5 +1,6 @@
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
+#include "../SUID-SGID-register/health-register.hpp"
 #include "../../include/transparent-hash.hpp"
 #include <algorithm>
 #include <any>
@@ -123,6 +124,14 @@ void CreatedOptionData() {
   verbose.category = OptionCategory::GLOBAL;
   verbose.hanlder = std::monostate{};
   GeneralOptionLog(verbose);
+
+  OptionMetaData explain_code;
+  explain_code.normalized_name = "--explain-code";
+  explain_code.conflict_name = {};
+  explain_code.data_type = TypeDataReceived::STRING;
+  explain_code.category = OptionCategory::PRESENTATION;
+  explain_code.hanlder = std::monostate{}; 
+  GeneralOptionLog(explain_code);
 
   // --- RECOLECCIÓN Y FILTRADO ---
 

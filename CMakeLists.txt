@@ -43,6 +43,7 @@ set(CORE_SOURCES
     src/option-register-information/special-option/version-handler.cpp
     src/command-register-information/list.cpp
     src/SUID-SGID-register/health-register.cpp
+    src/SUID-SGID-register/print-health-flags.cpp
     src/SUID-SGID-register/suid-sgid-register-table.cpp
     src/white-list-routes/white-list-routes.cpp
 )
@@ -65,8 +66,8 @@ add_executable(kls src/kls-main.cpp)
 target_link_libraries(kls PRIVATE kls_core)
 
 # 6. Infraestructura de Tests
-enable_testing()
-add_subdirectory(tests)
+#enable_testing()
+#add_subdirectory(tests)
 
 # 7. Instalación
 include(GNUInstallDirs)

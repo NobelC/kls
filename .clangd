@@ -1,5 +1,5 @@
 # ============================================================================
-# kron — Configuración de clangd
+# kls — Configuración de clangd
 # .clangd corregido para C++20
 # ============================================================================
 
@@ -55,12 +55,4 @@ InlayHints:
   DeducedTypes: true
   # Muestra los tipos en Structured Bindings
   Designators: true
-# ============================================================================
-# NOTA PARA NEOVIM (nvim-lspconfig):
-# El error 'Limit' ocurría porque no es una opción válida en el archivo .clangd.
-# Debes configurar el límite de resultados en tu init.lua de la siguiente forma:
-#
-# require('lspconfig').clangd.setup({
-#   cmd = { "clangd", "--limit-results=50", "--header-insertion=never" }
-# })
-# ============================================================================
+

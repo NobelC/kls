@@ -53,6 +53,7 @@ struct Option {
   bool capabilities : 1;
   bool no_health : 1;
   bool stats : 1;
+  bool explain : 1;
 };
 
 constexpr unsigned int MAX_LENGTH = 30;
@@ -282,7 +283,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     }
 }
 
-void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_bool,
+void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
@@ -303,7 +304,12 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
   }
   std::cout << std::string(120, '-') << "\n";
 
-  for (const auto &e : entries) {
+  for (auto &e : entries) {
+    auto AddFlag = [&](ID id) {
+        const HealthFlag* flag = GetHealthFlag(id);
+        if (flag) { e.health.emplace_back(*flag); }
+    };
+
     // 1. Perms (Mode)
     std::string perms;
     perms += (e.mode & S_IRUSR) ? "r" : "-";
@@ -334,14 +340,11 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
         }
         else{
           cache_owner[e.uid] = std::to_string(e.uid);
-          /*
-          if(errno == 0 || errno == ENOENT){
-            e.health.emplace_back(HealthFlag{
-                .code = "orphan uid — user no longer exists",
-                .level = 3,
-            });
+          if(!option_bool.no_health){ 
+            if(errno == 0 || errno == ENOENT){
+              AddFlag(ID("SU23"));
+            }
           }
-          */
         }
       }
     }
@@ -359,14 +362,11 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
         }
         else{
           cache_group[e.gid] = std::to_string(e.gid);
-          /*
-          if(errno == 0 || errno == ENOENT){
-            e.health.emplace_back(HealthFlag{
-                .code = "orphan gid — user no longer exists",
-                .level = 3,
-            });
+          if(!option_bool.no_health){
+            if(errno == 0 || errno == ENOENT){
+              AddFlag(ID("SU24"));
+            }
           }
-          */
         }
       }
     }
@@ -430,7 +430,7 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     else{
       auto join_alert = std::accumulate(e.health.begin(), e.health.end(), std::string{},
         [](const std::string& acc, const HealthFlag& s){
-          return acc.empty() ? s.message : acc + " | " + s.message; 
+          return acc.empty() ? s.id.to_string() : acc + " | " + s.id.to_string(); 
         });
       if (join_alert.empty()){
         join_alert = "-----------";
@@ -442,6 +442,17 @@ void ProcessPrinter(const std::vector<FileEntry> &entries, const Option& option_
     display_name.clear();
   }
 }
+
+[[nodiscard]] constexpr std::string_view get_param_option_value(const std::vector<Token>& params, std::string_view target_name) noexcept {
+  auto it = std::ranges::find(params, target_name, &Token::name);
+  if(it != params.end()) [[likely]] {
+    return it->value;
+  }
+  return {};
+}
+
+
+
 }// namespace
 
 void LIST_HANDLER(const GroupToken &token_group) {
@@ -476,7 +487,10 @@ void LIST_HANDLER(const GroupToken &token_group) {
       }), 
   .stats = std::ranges::any_of(token_group.options, [](const auto&t){
         return t.name == "--stats";
-      })
+      }),
+  .explain = std::ranges::any_of(token_group.options, [](const auto& t){
+      return t.name == "--explain-code";
+      }),
   };
 
 
@@ -504,6 +518,24 @@ void LIST_HANDLER(const GroupToken &token_group) {
     return;
   }
 
+  if(option_bool.explain){
+    auto code = get_param_option_value(token_group.options,"--explain-code");
+    std::vector<std::string_view> result_process;
+    size_t count_element = static_cast<size_t>(std::count(code.begin(), code.end(), ','));
+    result_process.reserve(count_element + 1);
+
+    size_t pos = 0;
+    while((pos = code.find(',')) != std::string_view::npos){
+      result_process.push_back(code.substr(0,pos));
+      code.remove_prefix(pos + 1);
+    }
+    result_process.push_back(code);
+
+    for(const auto& flag : result_process){
+      PrintHealthFlags(ID{flag});
+    }
+    return ;
+  }
 
 //================================================================================================================================================================
 //Process of Recolection 

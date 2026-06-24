@@ -1,5 +1,6 @@
 #include "white-list-routes.hpp"
 
+#include <algorithm>
 #include <array>
 #include <string_view>
 
@@ -20,10 +21,8 @@ constexpr std::array<std::string_view, 13> WHITELISTROUTES{
 };
 
 [[nodiscard]] bool IsKnowPath(std::string_view path) noexcept {
-  for(const auto& route : WHITELISTROUTES){
-    if(path.starts_with(route)){
-      return true;
-    }
-  }
-  return false;
+
+  return std::ranges::any_of(WHITELISTROUTES.begin(), WHITELISTROUTES.end(), [&](std::string_view compare){
+      return compare == path;
+      });
 }
