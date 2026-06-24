@@ -31,7 +31,7 @@ jobs:
     - name: Install Toolchain and Analysis Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential llvm clang clang-tidy cppcheck cmake libstdc++-12-dev lcov
+        sudo apt-get install -y build-essential llvm clang clang-tidy cppcheck cmake libstdc++-12-dev lcov libgtest-dev
 
     - name: Run Cppcheck
       run: |
