@@ -37,8 +37,6 @@ kls --sort=severity # Most dangerous files first
 | :--- | :--- | :--- |
 | **Arch Linux** | AUR Helper | `yay -S kls` or `paru -S kls` |
 | **Arch Linux** | AUR (Manual) | `git clone https://aur.archlinux.org/kls.git && cd kls && makepkg -si` |
-| **Debian / Ubuntu** | Official `.deb` | `sudo apt install ./kls-<version>-Linux-x86_64.deb` |
-| **Fedora / RHEL** | Official `.rpm` | `sudo dnf install ./kls-<version>-Linux-x86_64.rpm` |
 | **Any Linux / macOS** | Build from Source | `cmake -B build ... && sudo cmake --install build` |
 
 ---
@@ -59,31 +57,6 @@ paru -S kls
 git clone https://aur.archlinux.org/kls.git
 cd kls
 makepkg -si
-```
-
----
-
-### 2. 🐧 Debian / Ubuntu (`.deb` Package)
-
-We provide native pre-compiled Debian packages for both **x86_64** and **ARM64** architectures. Download the matching package from our GitHub Releases page:
-
-```bash
-# For x86_64 (Intel/AMD)
-sudo apt install ./kls-0.1.1-Linux-x86_64.deb
-
-# For ARM64 (Apple Silicon / Raspberry Pi / AWS Graviton)
-sudo apt install ./kls-0.1.1-Linux-aarch64.deb
-```
-
----
-
-### 3. 🎩 Fedora / Red Hat (`.rpm` Package)
-
-Official RPM packages are available for Fedora, CentOS, and RHEL:
-
-```bash
-# Install the downloaded RPM package
-sudo dnf install ./kls-0.1.1-Linux-x86_64.rpm
 ```
 
 ---
