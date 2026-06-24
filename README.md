@@ -102,16 +102,6 @@ sudo cmake --build build --target uninstall
 
 ---
 
-### 🔒 Cryptographic Verification
-
-Because `kls` is a security auditing tool, we cryptographically sign all release assets using GPG. Before installing, you can verify your package's integrity:
-
-```bash
-# Verify a downloaded package using its detached signature (.asc)
-gpg --verify kls-0.1.1-Linux-x86_64.deb.asc kls-0.1.1-Linux-x86_64.deb
-```
-For detailed instructions on importing public keys and managing verification, see our [Release Signing & Verification Guide](docs/RELEASE-SIGNING.md).
-
 
 ## Architecture
 
