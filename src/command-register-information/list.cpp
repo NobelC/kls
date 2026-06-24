@@ -4,6 +4,7 @@
 #include "../../include/token/token-raw-metadata.hpp"
 #include "../SUID-SGID-register/health-register.hpp"
 #include "../white-list-routes/white-list-routes.hpp"
+#include "../CAPABILITIES-register/capabilities-register.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <condition_variable>
@@ -41,6 +42,7 @@
 #include <unistd.h>
 #include <condition_variable>
 #include <sys/xattr.h>
+#include <linux/xattr.h>
 
 namespace {
 
@@ -229,6 +231,21 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
             AddFlag(ID("SU03")); 
         }
     }
+}
+
+void PerformCapabilities(FileEntry &fe, std::string_view full_path, const struct statx &stx){
+  auto AddCapability = [&](ID id) {
+        const HealthFlag* flag = GetCapabilityFlag(id);
+        if (flag) { fe.capabilities.emplace_back(*flag); }
+  };
+  ssize_t size = getxattr(std::string(full_path).c_str(), XATTR_NAME_CAPS, nullptr,0);
+  if(size >= 0){
+    fe.has_capabilities = true;
+    AddCapability(ID{"CAP01"});
+  }
+  else{
+    fe.has_capabilities = false;
+  }
 }
 
 void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,

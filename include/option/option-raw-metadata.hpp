@@ -95,6 +95,7 @@ struct FileEntry {
   std::string symlink_target;
   std::string extension;
   std::vector<HealthFlag> health;
+  std::vector<HealthFlag> capabilities;
 
   FileEntry() noexcept
   {
