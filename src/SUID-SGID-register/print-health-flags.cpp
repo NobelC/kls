@@ -9,14 +9,15 @@ void PrintHealthFlags(const ID& id) {
         return;
     }
 
-    const char* level_str = "UNKNOWN";
+    const char* level_str;
 
     switch (flag->level) {
+        case 1:  level_str = "LOW" ;     break;
         case 2:  level_str = "INFO";     break;
         case 3:  level_str = "WARNING";  break;
         case 4:  level_str = "HIGH";     break;
         case 5:  level_str = "CRITICAL"; break;
-        default: level_str = "LOW";      break;
+        default: level_str = "UNKNOWN";
     }
 
     std::cout << "[SYSTEM HEALTH ALERT]\n"
