@@ -83,7 +83,6 @@ install_manifest.txt
 CTestTestfile.cmake
 _deps/
 
-# compile_commands.json generado (se excluye para evitar conflictos, pero algunos prefieren versionarlo)
 compile_commands.json
 
 # Archivos de CPack
@@ -282,3 +281,5 @@ kls-*.tar.gz.asc
 
 # Directorios temporales de pruebas de extracción
 /kls-*/
+
+
