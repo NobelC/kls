@@ -56,12 +56,13 @@ jobs:
         -DENABLE_SANITIZERS=ON
         -DENABLE_COVERAGE=ON
 
-    - name: Run Clang-Tidy
-      run: |
-        find . -name "*.cpp" -o -name "*.c" | grep -v "build/" | xargs clang-tidy -p build/ --warnings-as-errors='*'
-
     - name: Build
       run: cmake --build build --config ${{env.BUILD_TYPE}}
+
+    - name: Run Clang-Tidy
+      if: matrix.compiler == 'clang'
+      run: |
+        find . -name "*.cpp" -o -name "*.c" | grep -v "build/" | xargs clang-tidy -p build/ --warnings-as-errors='*'
 
     - name: Run Tests (Logic + ASan + UBSan)
       working-directory: build
