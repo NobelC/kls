@@ -69,12 +69,6 @@ jobs:
       timeout-minutes: 3
       run: ctest --output-on-failure
 
-    - name: Generate Coverage Report
-      if: matrix.compiler == 'gcc'
-      run: |
-        lcov --directory build --capture --output-file coverage.info --ignore-errors mismatch
-        lcov --remove coverage.info '/usr/*' '*/build/_deps/*' '*/tests/*' --output-file coverage.info --ignore-errors mismatch
-        lcov --list coverage.info
 
     - name: Upload to Codecov
       if: matrix.compiler == 'gcc'
