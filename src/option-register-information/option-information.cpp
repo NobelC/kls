@@ -1,6 +1,5 @@
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
-#include "../SUID-SGID-register/health-register.hpp"
 #include "../../include/transparent-hash.hpp"
 #include <algorithm>
 #include <any>
@@ -132,6 +131,14 @@ void CreatedOptionData() {
   explain_code.category = OptionCategory::PRESENTATION;
   explain_code.hanlder = std::monostate{}; 
   GeneralOptionLog(explain_code);
+  
+  OptionMetaData only_capabilities;
+  only_capabilities.normalized_name = "--only-capabilities";
+  only_capabilities.conflict_name = {"--no-health"};
+  only_capabilities.data_type = TypeDataReceived::NONE;
+  only_capabilities.category = OptionCategory::FILTERING;
+  only_capabilities.hanlder = std::monostate{};
+  GeneralOptionLog(only_capabilities);
 
   // --- RECOLECCIÓN Y FILTRADO ---
 

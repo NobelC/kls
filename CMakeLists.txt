@@ -46,6 +46,9 @@ set(CORE_SOURCES
     src/SUID-SGID-register/print-health-flags.cpp
     src/SUID-SGID-register/suid-sgid-register-table.cpp
     src/white-list-routes/white-list-routes.cpp
+    src/CAPABILITIES-register/capabilities-register-log.cpp
+    src/CAPABILITIES-register/capabilities-register.cpp
+    src/CAPABILITIES-register/print-capabilities.cpp
 )
 
 # 3. Biblioteca Core
