@@ -6,7 +6,7 @@
 
 static std::unordered_map<uint32_t,HealthFlag> table_capability_flag;
 
-void GeneralCapabilityFlagsLog(const HealthFlag& health){
+void GeneralCapabilityLog(const HealthFlag& health){
   table_capability_flag.insert_or_assign(health.id.get_value(), health);
 }
 

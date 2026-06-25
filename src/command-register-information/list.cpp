@@ -6,10 +6,13 @@
 #include "../white-list-routes/white-list-routes.hpp"
 #include "../CAPABILITIES-register/capabilities-register.hpp"
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <condition_variable>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <dirent.h>
 #include <fcntl.h>
 #include <filesystem>
@@ -43,6 +46,11 @@
 #include <condition_variable>
 #include <sys/xattr.h>
 #include <linux/xattr.h>
+#include <linux/capability.h>
+
+#ifndef VFS_CAP_REVISION_MASK
+#define VFS_CAP_REVISION_MASK 0xff000000
+#endif
 
 namespace {
 
@@ -56,6 +64,7 @@ struct Option {
   bool no_health : 1;
   bool stats : 1;
   bool explain : 1;
+  bool only_capability : 1;
 };
 
 constexpr unsigned int MAX_LENGTH = 30;
@@ -199,8 +208,8 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
         if (is_reg) {
             int fd = open(std::string(full_path).c_str(), O_RDONLY);
             if (fd != -1) {
-                unsigned char buffer[4] = {0};
-                ssize_t n = read(fd, buffer, 4);
+              std::array<char, 4> buffer = {0};
+                ssize_t n = read(fd, buffer.data(), 4);
                 close(fd);
 
                 if (n >= 2) {
@@ -233,19 +242,65 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
     }
 }
 
-void PerformCapabilities(FileEntry &fe, std::string_view full_path, const struct statx &stx){
+void PerformCapabilities(FileEntry &fe, std::string_view full_path){
   auto AddCapability = [&](ID id) {
         const HealthFlag* flag = GetCapabilityFlag(id);
         if (flag) { fe.capabilities.emplace_back(*flag); }
   };
-  ssize_t size = getxattr(std::string(full_path).c_str(), XATTR_NAME_CAPS, nullptr,0);
-  if(size >= 0){
-    fe.has_capabilities = true;
-    AddCapability(ID{"CAP01"});
+  std::array<uint8_t,64> buffer;
+  std::memset(buffer.data(), 0, sizeof(buffer));
+  ssize_t size = getxattr(std::string(full_path).c_str(), XATTR_NAME_CAPS ,buffer.data(), sizeof(buffer));
+
+  if(size == -1){
+    return ;
   }
-  else{
-    fe.has_capabilities = false;
+
+  if(size > 0 ){
+    AddCapability(ID("CA01"));
   }
+  auto* cap_struct = reinterpret_cast<struct vfs_cap_data*>(buffer.data());
+  uint32_t magic_etc = cap_struct->magic_etc;
+  uint32_t version = magic_etc & VFS_CAP_REVISION_MASK;
+
+  if(version != VFS_CAP_REVISION_1 && version != VFS_CAP_REVISION_2 && version != VFS_CAP_REVISION_3){
+    AddCapability(ID{"CA28"});
+    return ;
+  }
+
+  uint64_t permitted = ((uint64_t)cap_struct->data[1].permitted << 32) | cap_struct->data[0].permitted;
+  uint64_t inheritable = ((uint64_t)cap_struct->data[1].inheritable << 32) | cap_struct->data[0].inheritable;
+
+  if(permitted == 0 && inheritable == 0){
+    AddCapability(ID{"CA35"});
+  }
+  if(inheritable != 0){
+    AddCapability(ID{"CA36"});
+  }
+  if(permitted & ((1ULL << 21) | (1ULL << 19) | (1ULL << 16))){
+    AddCapability(ID{"CA25"});
+  }
+  if(permitted & ((1ULL << 7) | (1ULL << 6) | (1ULL << 0))){
+    AddCapability(ID{"CA26"});
+  }
+  if(permitted & ((1ULL << 13) | (1Ull <<12))){
+    AddCapability(ID{"CA27"});
+  }
+  if(permitted & ((1ULL << 1) | (1Ull << 2))){
+    AddCapability(ID{"CA30"});
+  }
+  if(permitted & ((1ULL << 3) | (1ULL << 4))){
+    AddCapability(ID{"CA31"});
+  }
+  if(permitted & ((1ULL << 18))){
+    AddCapability(ID{"CA32"});
+  }
+  if(permitted & ((1ULL << 17))){
+    AddCapability(ID{"CA33"});
+  }
+  if(permitted & ((1ULL << 29) | (1ULL << 30))){
+    AddCapability(ID{"CA34"});
+  }
+
 }
 
 void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
@@ -294,8 +349,14 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
             fe.extension = std::string(name_view.substr(dot_pos));
         }
 
+        if(!health.no_health && health.only_capability){
+          PerformCapabilities(fe, full_path);
+          return ;
+        }
+
         if (!health.no_health) {
             PerformHealthChecks(fe, full_path, stx);
+            PerformCapabilities(fe, full_path);
         }
     }
 }
@@ -474,6 +535,8 @@ void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
 
 void LIST_HANDLER(const GroupToken &token_group) {
   CreatedHealthFlags();
+  CreatedCapabilityFlags();
+
   std::vector<FileEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
@@ -508,6 +571,9 @@ void LIST_HANDLER(const GroupToken &token_group) {
   .explain = std::ranges::any_of(token_group.options, [](const auto& t){
       return t.name == "--explain-code";
       }),
+  .only_capability = std::ranges::any_of(token_group.options, [](const auto& t){
+      return t.name == "--only-capability";
+      })
   };
 
 
