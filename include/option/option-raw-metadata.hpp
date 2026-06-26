@@ -1,5 +1,6 @@
 #pragma once
 #include <any>
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -31,7 +32,7 @@ struct ID{
   private:
     uint32_t val;
   public:
-  explicit constexpr ID(const char (&s)[5]) : val(
+  explicit constexpr ID(const std::array<char,5>&s) : val(
       (static_cast<uint32_t>(s[0]) << 24) |
       (static_cast<uint32_t>(s[1]) << 16) |
       (static_cast<uint32_t>(s[2]) << 8)  |
@@ -53,13 +54,13 @@ struct ID{
   bool operator==(const ID& other) const {return val == other.val;}
   
  [[nodiscard]] std::string to_string() const {
-    const char buffer[4] = {
+    const std::array<char,4>buffer = {
         static_cast<char>(val >> 24 & 0xFF),
         static_cast<char>(val >> 16 & 0xFF),
         static_cast<char>(val >> 8  & 0xFF),
         static_cast<char>(val       & 0xFF)
     };
-    return std::string(buffer, 4);// The std::string(ptr, count) constructor does not need a null terminator 
+    return {buffer.data(), 4};// The std::string(ptr, count) constructor does not need a null terminator 
 }
 };
 
@@ -102,7 +103,7 @@ struct FileEntry {
     path.reserve(256);
     symlink_target.reserve(256);
     extension.reserve(256);
-    health.reserve(2);
+    //health.reserve(2);
   }
 
 
