@@ -80,7 +80,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 ### Security — Filtering
 | Option                    | Alias | Description                                   |Status|
 | :------------------------ | :---- | :-------------------------------------------- |:---- |
-| `--only-alerts`           |       | Only show entries with alerts                 |      |
+| `--only-alerts`           |       | Only show entries with alerts                 |   ✅    |
 | `--only-suid`             |       | Only files with active SUID                   |      |
 | `--only-sgid`             |       | Only files with active SGID                   |      | 
 | `--only-world-writable`   |       | Only files writable by everyone               |      |
@@ -101,7 +101,7 @@ Users can control the intensity of the traversal using the `--depth` flag, preve
 | :----------------- | :---- | :------------------------------------------- |------- |
 | `--health`         |       | Enabled by default — full health analysis    |   ✅   |
 | `--no-health`      |       | Disable health analysis                      |   ✅   |
-| `--capabilities`   |       | Show Linux capabilities per entry            |        |
+| `--capabilities`   |       | Show Linux capabilities per entry            |   ✅      |
 | `--acl`            |       | Show extended ACLs if they exist             |        |
 | `--attack-surface` |       | Summary of the directory's attack surface    |        |
 | `--timeline`       |       | Temporal anomaly analysis                    |        |

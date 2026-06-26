@@ -1,13 +1,13 @@
 # ============================================================================
-# kls — Configuración de clangd
-# .clangd corregido para C++20
+# kls — clangd Configuration
+# .clangd corrected for C++20
 # ============================================================================
 
 CompileFlags:
-  # Directorio de build donde CMake genera compile_commands.json
+  # Build directory where CMake generates compile_commands.json
   CompilationDatabase: build/
   
-  # Flags de compilación para el análisis estático
+  # Compilation flags for static analysis
   Add:
     - "-std=c++20"
     - "-Iinclude"
@@ -22,7 +22,7 @@ CompileFlags:
     - "-Wno-sign-compare"
 
 Diagnostics:
-  # Configuración de clang-tidy para análisis de performance y modernización
+  # clang-tidy configuration for performance and modernization analysis
   ClangTidy:
     Add:
       - "modernize-*"
@@ -37,22 +37,21 @@ Diagnostics:
       - "modernize-pass-by-value"
 
 Index:
-  # Indexación en segundo plano para rapidez en proyectos grandes
+  # Background indexing for performance in large projects
   Background: Build
   StandardLibrary: true
 
 Completion:
-  # Incluye símbolos de todos los archivos indexados
+  # Includes symbols from all indexed files
   AllScopes: true
 Hover:
-  # Muestra información extendida sobre tipos y plantillas
+  # Shows extended information about types and templates
   ShowAKA: true
 
 InlayHints:
-  # Muestra visualmente los nombres de los parámetros en las llamadas
+  # Visually displays parameter names in function calls
   ParameterNames: true
-  # Muestra los tipos deducidos en 'auto'
+  # Displays deduced types for 'auto'
   DeducedTypes: true
-  # Muestra los tipos en Structured Bindings
+  # Displays types in Structured Bindings
   Designators: true
-

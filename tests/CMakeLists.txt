@@ -9,7 +9,7 @@ set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 
-# --- TARGET DE TESTS ---
+# --- TEST TARGET ---
 add_executable(kls_tests
     TOKENIZATION_TEST.cpp
     PARSING_TEST.cpp 

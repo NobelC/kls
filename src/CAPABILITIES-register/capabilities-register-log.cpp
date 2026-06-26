@@ -4,10 +4,9 @@
 
 void CreatedCapabilityFlags() {
 
-    // --- CAPABILITIES: RIESGO DE ESCALADA DIRECTA / PERMISOS LAXOS ---
+    // --- CAPABILITIES: DIRECT ESCALATION RISK / LAX PERMISSIONS ---
     GeneralCapabilityLog({.message = "File has Linux capabilities assigned", .id = ID("CA01"), .level = 1});
  
-    // --- CAPABILITIES: ANÁLISIS ESPECÍFICO DE PRIVILEGIOS CRÍTICOS (Reemplazo SGID) ---
     GeneralCapabilityLog({.message = "Highly dangerous capability assigned (CAP_SYS_ADMIN/CAP_SYS_PTRACE/CAP_SYS_MODULE)", .id = ID("CA25"), .level = 5});
     GeneralCapabilityLog({.message = "Identity manipulation capability assigned (CAP_SETUID/CAP_SETGID/CAP_CHOWN)", .id = ID("CA26"), .level = 5});
     GeneralCapabilityLog({.message = "Network promiscuity capability assigned (CAP_NET_RAW/CAP_NET_ADMIN)", .id = ID("CA27"), .level = 4});

@@ -116,8 +116,7 @@ bool ValidationGroupToken(GroupToken &group_raw) {
     });
   }
 
-  // Eliminar opciones duplicadas (sera valida solo la primera opcion
-  // introducida)
+  // Remove duplicate options (only the first option entered will be valid)
   std::unordered_set<std::string_view> eliminated_duplicated_option;
   eliminated_duplicated_option.reserve(group_raw.options.size());
   std::vector<Token> option_not_duplicated;
@@ -137,6 +136,7 @@ bool ValidationGroupToken(GroupToken &group_raw) {
     if (option_data == nullptr) {
       continue; // Should have been caught by parsing, but safety first
     }
+    
     // Comprobamos si alguna opcion tiene conflictos con otra
     auto conflict_it = std::ranges::find_if(
         option_data->conflict_name, [&](const auto &conflict_option) {
@@ -156,7 +156,7 @@ bool ValidationGroupToken(GroupToken &group_raw) {
       return false;
     }
 
-    // Validar tipo de dato que debe recibir:
+    // Validate expected data type:
     switch (option_data->data_type) {
     case TypeDataReceived::DATE:
       if (!DATE_VALIDATED(element.value)) {
@@ -184,7 +184,7 @@ bool ValidationGroupToken(GroupToken &group_raw) {
     }
   }
 
-  // ordenar las option en base a su cronologia de ejecucion
+  // Sort options based on their execution chronology
   std::ranges::sort(group_raw.options, [](const Token &a, const Token &b) {
     return static_cast<uint8_t>(GetOptionData(a.name)->category) <
            static_cast<uint8_t>(GetOptionData(b.name)->category);

@@ -59,8 +59,7 @@ struct ID{
         static_cast<char>(val >> 8  & 0xFF),
         static_cast<char>(val       & 0xFF)
     };
-    // El constructor std::string(ptr, count) no necesita \0
-    return std::string(buffer, 4); 
+    return std::string(buffer, 4);// The std::string(ptr, count) constructor does not need a null terminator 
 }
 };
 

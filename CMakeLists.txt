@@ -9,7 +9,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# 1. Configuración de Compilación
+# 1. Build Configuration
 option(ENABLE_SANITIZERS "Enable Address and Undefined Behavior Sanitizers" ON)
 option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
 
@@ -30,7 +30,7 @@ if(ENABLE_COVERAGE AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
     message(STATUS "Coverage instrumentation enabled")
 endif()
 
-# 2. Fuentes del Core
+# 2. Core Sources
 set(CORE_SOURCES
     src/core-system/tokenization.cpp
     src/core-system/parsing.cpp
@@ -51,31 +51,31 @@ set(CORE_SOURCES
     src/CAPABILITIES-register/print-capabilities.cpp
 )
 
-# 3. Biblioteca Core
+# 3. Core Library
 add_library(kls_core STATIC ${CORE_SOURCES})
 target_include_directories(kls_core PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/generated
 )
 
-# 4. Configurar archivos generados
+# 4. Configure Generated Files
 configure_file(
     "${PROJECT_SOURCE_DIR}/include/special-option/version-option.hpp.in"
     "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
 )
 
-# 5. El Ejecutable Principal
+# 5. Main Executable
 add_executable(kls src/kls-main.cpp)
 target_link_libraries(kls PRIVATE kls_core)
 
-# 6. Infraestructura de Tests
+# 6. Testing Infrastructure
 #enable_testing()
 #add_subdirectory(tests)
 
-# 7. Instalación
+# 7. Installation
 include(GNUInstallDirs)
 install(TARGETS kls RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
-# Comprimir la man page antes de la instalación para evitar warnings de lintian
+# Compress the man page before installation to avoid lintian warnings
 find_program(GZIP_EXECUTABLE gzip)
 if(GZIP_EXECUTABLE)
     set(MAN_PAGE_SOURCE "${PROJECT_SOURCE_DIR}/docs/kls.1")
@@ -95,7 +95,7 @@ else()
     install(FILES docs/kls.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 COMPONENT man)
 endif()
 
-# Completions para Shells
+# Shell Completions
 install(FILES completions/kls.bash
         DESTINATION ${CMAKE_INSTALL_DATADIR}/bash-completion/completions
         RENAME kls)
@@ -105,8 +105,8 @@ install(FILES completions/kls.fish
         DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d)
 
 
-#8. Empaquetado
-# --- Empaquetado con CPack ---
+# 8. Packaging
+# --- Packaging with CPack ---
 set(CPACK_PACKAGE_NAME "kls")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_CONTACT "jeremynobel16@gmail.com")
@@ -152,4 +152,3 @@ if(NOT TARGET uninstall)
   add_custom_target(uninstall
     COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
-
