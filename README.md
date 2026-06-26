@@ -118,4 +118,4 @@ For more technical details, see the [List Architecture Documentation](docs/LIST-
 ---
 
 ## License
-MIT
+GNU GENERAL PUBLIC LICENSE
