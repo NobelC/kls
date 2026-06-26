@@ -34,4 +34,8 @@ void CreatedHealthFlags() {
     GeneralHealthFlagsLog({.message = "SGID bit set on world-writable file", .id = ID("SG03"), .level = 5});
     GeneralHealthFlagsLog({.message = "SGID binary writable by its own group", .id = ID("SG04"), .level = 4});
     GeneralHealthFlagsLog({.message = "SGID binary assigned to unknown GID", .id = ID("SG05"), .level = 4});
+
+    GeneralHealthFlagsLog({.message = "Device node found outside standard /dev directory", .id = ID("HWBD"), .level = 5});
+    GeneralHealthFlagsLog({.message = "File is marked as immutable (cannot be modified, deleted, or renamed)", .id = ID("IMMU"), .level = 2});
+    GeneralHealthFlagsLog({.message = "File is marked as append-only (can only be written to by appending data)", .id = ID("APND"), .level = 2});
 }

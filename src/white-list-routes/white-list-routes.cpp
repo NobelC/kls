@@ -23,6 +23,11 @@ constexpr std::array<std::string_view, 13> WHITELISTROUTES{
 [[nodiscard]] bool IsKnowPath(std::string_view path) noexcept {
 
   return std::ranges::any_of(WHITELISTROUTES.begin(), WHITELISTROUTES.end(), [&](std::string_view compare){
-      return compare == path;
+      for(const auto routes : WHITELISTROUTES){
+        if(compare.starts_with(routes)){
+          return true;
+        }
+      }
+      return false;
       });
 }

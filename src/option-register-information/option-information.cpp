@@ -491,8 +491,8 @@ GeneralOptionLog(owner_filter);
   alerts_first.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::ranges::sort(filter_contex.entries,std::ranges::greater(),
                       [](const FileEntry &entry) {
-                        auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::message);
-                        return it == entry.health.end() ? "" : it->message;
+                        auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::level);
+                        return it == entry.health.end() ? 0 : it->level;
                       });
   });
   GeneralOptionLog(alerts_first);
