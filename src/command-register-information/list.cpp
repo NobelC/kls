@@ -129,9 +129,8 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
       struct passwd pwd;
       struct passwd* result = nullptr;
       std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
-
-      int s;
-      while((s = getpwuid_r(fe.uid,&pwd,buffer.data(),buffer.size(),&result)) == ERANGE){
+      
+      while((getpwuid_r(fe.uid,&pwd,buffer.data(),buffer.size(),&result)) == ERANGE){
         buffer.resize(buffer.size() * 2);
       }
 
@@ -151,8 +150,7 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
       struct group gp;
       struct group* result = nullptr;
       std::vector<char> buffer(static_cast<unsigned long>(  initial_buffer));
-      int s;
-      while((s = getgrgid_r(fe.gid,&gp,buffer.data(),buffer.size(),&result)) == ERANGE){
+      while((getgrgid_r(fe.gid,&gp,buffer.data(),buffer.size(),&result)) == ERANGE){
         buffer.resize(buffer.size() * 2);
       }
 
