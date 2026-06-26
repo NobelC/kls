@@ -36,7 +36,7 @@ set(CORE_SOURCES
     src/core-system/parsing.cpp
     src/core-system/validator.cpp
     src/core-system/executor.cpp
-    src/error-register-information/error_hanlder.cpp
+    src/error-register-information/error_handler.cpp
     src/option-register-information/option-get-option.cpp
     src/option-register-information/option-information.cpp
     src/option-register-information/special-option/help-handler.cpp

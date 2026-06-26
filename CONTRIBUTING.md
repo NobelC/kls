@@ -60,7 +60,7 @@ Every option requires:
   - `GLOBAL`     — system flags handled before the pipeline.
 - `conflict_name` — list of options that cannot coexist with this one.
 - `requieres_name` — list of options that must be present for this one to work.
-- `hanlder` — a `FilteringProcess` lambda for FILTERING/SORTING, or
+- `handler` — a `FilteringProcess` lambda for FILTERING/SORTING, or
   `std::monostate{}` for options the executor or presenter reads directly.
 
 After registering, add the corresponding shell completions in:

@@ -159,5 +159,5 @@ struct OptionMetaData {
   std::vector<std::string> requieres_name = {};
   TypeDataReceived data_type = TypeDataReceived::NONE;
   OptionCategory category;
-  OptionHandler hanlder;
+  OptionHandler handler;
 };

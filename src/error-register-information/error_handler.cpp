@@ -1,4 +1,4 @@
-#include "../../include/error/error_hanlder.hpp"
+#include "../../include/error/error_handler.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
 #include <iostream>
 #include <string_view>

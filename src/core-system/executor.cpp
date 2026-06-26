@@ -1,6 +1,6 @@
 #include "../../include/core-hpp/executor.hpp"
 #include "../../include/token/group-token.hpp"
-#include "../../src/command-register-information/command-hanlder-include.hpp"
+#include "../../src/command-register-information/command-handler-include.hpp"
 #include "../../include/special-option/help-option.hpp"
 #include "../../include/token/token-raw-metadata.hpp"
 #include <algorithm>

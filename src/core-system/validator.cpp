@@ -1,5 +1,5 @@
 #include "../../include/core-hpp/validator.hpp"
-#include "../../include/error/error_hanlder.hpp"
+#include "../../include/error/error_handler.hpp"
 #include "../../include/option/option-implementation.hpp"
 #include "../../include/option/option-raw-metadata.hpp"
 #include "../../include/token/token-raw-metadata.hpp"

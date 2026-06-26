@@ -92,10 +92,6 @@ struct DirDelete{
 
 using DirPtr = std::unique_ptr<DIR, DirDelete>;
 
-std::mutex mutex_queue;
-std::condition_variable condition_queue;
-bool finished_recolection = false;
-
 void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct statx &stx) {
     auto AddFlag = [&](ID id) {
         const HealthFlag* flag = GetHealthFlag(id);
@@ -124,13 +120,50 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
     if (is_dir && (stx.stx_mode & S_IWOTH) && !(stx.stx_mode & S_ISVTX)) {
         AddFlag(ID("SG02")); 
     }
+    {
+      long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX);
+      if(initial_buffer == -1){
+        initial_buffer = 1024;
+      }
 
-    if (getpwuid(fe.uid) == nullptr) {
-      AddFlag(ID("SU11"));
+      struct passwd pwd;
+      struct passwd* result = nullptr;
+      std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
+
+      int s;
+      while((s = getpwuid_r(fe.uid,&pwd,buffer.data(),buffer.size(),&result)) == ERANGE){
+        buffer.resize(buffer.size() * 2);
+      }
+
+      if(result == nullptr){
+        AddFlag(ID{"SU11"});
+      }
+
     }
-    if (getgrgid(fe.gid) == nullptr) {
-      AddFlag(ID("SG05"));
+    
+    {
+      
+      long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX) ;
+      if (initial_buffer == -1){
+        initial_buffer = 1024;
+      }
+      
+      struct group gp;
+      struct group* result = nullptr;
+      std::vector<char> buffer(static_cast<unsigned long>(  initial_buffer));
+      int s;
+      while((s = getgrgid_r(fe.gid,&gp,buffer.data(),buffer.size(),&result)) == ERANGE){
+        buffer.resize(buffer.size() * 2);
+      }
+
+      if (result == nullptr) {
+        AddFlag(ID("SG05"));
+      }
+
     }
+    
+    
+
     if (is_reg) {
         if (stx.stx_mode & S_ISVTX) {
           AddFlag(ID("SU22"));
@@ -537,6 +570,10 @@ void LIST_HANDLER(const GroupToken &token_group) {
   CreatedHealthFlags();
   CreatedCapabilityFlags();
 
+  std::mutex mutex_queue;
+  std::condition_variable condition_queue;
+  bool finished_recolection = false;
+
   std::vector<FileEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
@@ -744,8 +781,8 @@ void LIST_HANDLER(const GroupToken &token_group) {
                                            FilteringProcess>) {
                 handler(fs);
               }
-            },
-            metadata->hanlder);
+           },
+            metadata->handler);
       }
     }
   };
