@@ -352,7 +352,7 @@ owner_filter.handler = FilteringProcess([](FilterStruct &filter_contex) {
   }
 
   const std::string_view owner = *owner_raw;
-  static std::unordered_map<uid_t, std::string> cache_owner; 
+  std::unordered_map<uid_t, std::string> cache_owner; 
 
   std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
     auto it = cache_owner.find(e.uid);
@@ -376,7 +376,7 @@ GeneralOptionLog(owner_filter);
   }
 
   const std::string_view group = *group_raw;
-  static std::unordered_map<gid_t, std::string> cache_group; 
+  std::unordered_map<gid_t, std::string> cache_group; 
 
   std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
     auto it = cache_group.find(e.gid);
