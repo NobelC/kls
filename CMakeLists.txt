@@ -32,16 +32,16 @@ endif()
 
 # 2. Core Sources
 set(CORE_SOURCES
-    src/core-system/tokenization.cpp
-    src/core-system/parsing.cpp
-    src/core-system/validator.cpp
-    src/core-system/executor.cpp
-    src/error-register-information/error_handler.cpp
-    src/option-register-information/option-get-option.cpp
-    src/option-register-information/option-information.cpp
-    src/option-register-information/special-option/help-handler.cpp
-    src/option-register-information/special-option/version-handler.cpp
-    src/command-register-information/list.cpp
+    src/cli/parser/tokenization.cpp
+    src/cli/parser/parsing.cpp
+    src/cli/parser/validator.cpp
+    src/cli/parser/executor.cpp
+    src/cli/error/error_handler.cpp
+    src/cli/option/option-get-option.cpp
+    src/cli/option/option-information.cpp
+    src/cli/option/special-option/help-handler.cpp
+    src/cli/option/special-option/version-handler.cpp
+    src/cli/command/list.cpp
     src/SUID-SGID-register/health-register.cpp
     src/SUID-SGID-register/print-health-flags.cpp
     src/SUID-SGID-register/suid-sgid-register-table.cpp
@@ -60,7 +60,7 @@ target_include_directories(kls_core PUBLIC
 
 # 4. Configure Generated Files
 configure_file(
-    "${PROJECT_SOURCE_DIR}/include/special-option/version-option.hpp.in"
+    "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
     "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
 )
 
@@ -69,8 +69,8 @@ add_executable(kls src/kls-main.cpp)
 target_link_libraries(kls PRIVATE kls_core)
 
 # 6. Testing Infrastructure
-#enable_testing()
-#add_subdirectory(tests)
+enable_testing()
+add_subdirectory(tests)
 
 # 7. Installation
 include(GNUInstallDirs)

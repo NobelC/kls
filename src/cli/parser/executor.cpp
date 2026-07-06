@@ -1,8 +1,8 @@
-#include "../../include/core-hpp/executor.hpp"
-#include "../../include/token/group-token.hpp"
-#include "../../src/command-register-information/command-handler-include.hpp"
-#include "../../include/special-option/help-option.hpp"
-#include "../../include/token/token-raw-metadata.hpp"
+#include "../../../include/kls/cli/parser/executor.hpp"
+#include "../../../include/kls/cli/token/group-token.hpp"
+#include "../command/command-handler-include.hpp"
+#include "../../../include/kls/cli/special-option/help-option.hpp"
+#include "../../../include/kls/cli/token/token-raw-metadata.hpp"
 #include <algorithm>
 
 void executor(const GroupToken& token_group){

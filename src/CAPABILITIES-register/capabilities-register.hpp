@@ -1,5 +1,5 @@
 #pragma once
-#include "option/option-raw-metadata.hpp"
+#include "../../include/kls/cli/option/option-raw-metadata.hpp"
 
 void GeneralCapabilityLog(const HealthFlag& health);
 void PrintCapabilityFlags(const ID& id);

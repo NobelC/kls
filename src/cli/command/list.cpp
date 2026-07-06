@@ -1,10 +1,10 @@
-#include "../../include/option/option-implementation.hpp"
-#include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/token/group-token.hpp"
-#include "../../include/token/token-raw-metadata.hpp"
-#include "../SUID-SGID-register/health-register.hpp"
-#include "../white-list-routes/white-list-routes.hpp"
-#include "../CAPABILITIES-register/capabilities-register.hpp"
+#include "../../../../kls/include/kls/cli/option/option-implementation.hpp"
+#include "../../../../kls/include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../../kls/include/kls/cli/token/group-token.hpp"
+#include "../../../../kls/include/kls/cli/token/token-raw-metadata.hpp"
+#include "../../SUID-SGID-register/health-register.hpp"
+#include "../../white-list-routes/white-list-routes.hpp"
+#include "../../CAPABILITIES-register/capabilities-register.hpp"
 #include <algorithm>
 #include <array>
 #include <cerrno>

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../include/core-hpp/tokenization.hpp"
-#include "../include/core-hpp/parsing.hpp"
-#include "../include/option/option-implementation.hpp"
+#include "../include/kls/cli/parser/tokenization.hpp"
+#include "../include/kls/cli/parser/parsing.hpp"
+#include "../include/kls/cli/option/option-implementation.hpp"
 
 namespace{
 // 1. Option parsing

@@ -1,9 +1,9 @@
-#include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/option/option-implementation.hpp"
+#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../include/kls/cli/option/option-implementation.hpp"
 #include <functional>
 #include <unordered_map>
 #include <string>
-#include "../../include/transparent-hash.hpp"
+#include "../../../include/transparent-hash.hpp"
 
 static std::unordered_map<std::string, OptionMetaData, transparent_hash, std::equal_to<>> table_option;
 

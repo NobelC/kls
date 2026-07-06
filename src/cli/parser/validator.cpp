@@ -1,9 +1,9 @@
-#include "../../include/core-hpp/validator.hpp"
-#include "../../include/error/error_handler.hpp"
-#include "../../include/option/option-implementation.hpp"
-#include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/token/token-raw-metadata.hpp"
-#include "special-option/version-option.hpp"
+#include "../../../include/kls/cli/parser/validator.hpp"
+#include "../../../include/kls/cli/error/error_handler.hpp"
+#include "../../../include/kls/cli/option/option-implementation.hpp"
+#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../include/kls/cli/token/token-raw-metadata.hpp"
+#include "../../../include/kls/cli/special-option/version-option.hpp.in"
 #include <algorithm>
 #include <cctype>
 #include <cstddef>

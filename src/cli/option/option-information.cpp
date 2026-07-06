@@ -1,6 +1,6 @@
-#include "../../include/option/option-implementation.hpp"
-#include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/transparent-hash.hpp"
+#include "../../../include/kls/cli/option/option-implementation.hpp"
+#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../include/transparent-hash.hpp"
 #include <algorithm>
 #include <any>
 #include <array>

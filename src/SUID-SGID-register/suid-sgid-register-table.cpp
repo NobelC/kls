@@ -1,5 +1,4 @@
 #include "health-register.hpp"
-#include "option/option-raw-metadata.hpp"
 
 void CreatedHealthFlags() {
 

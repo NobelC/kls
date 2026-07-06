@@ -1,8 +1,8 @@
-#include "../../include/core-hpp/parsing.hpp"
-#include "../../include/error/error_handler.hpp"
-#include "../../include/option/option-implementation.hpp"
-#include "../../include/option/option-raw-metadata.hpp"
-#include "../../include/token/token-raw-metadata.hpp"
+#include "../../../include/kls/cli/parser/parsing.hpp"
+#include "../../../include/kls/cli/error/error_handler.hpp"
+#include "../../../include/kls/cli/option/option-implementation.hpp"
+#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../include/kls/cli/token/token-raw-metadata.hpp"
 #include <cstddef>
 #include <string>
 #include <vector>

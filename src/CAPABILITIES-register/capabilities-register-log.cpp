@@ -1,5 +1,4 @@
 #include "capabilities-register.hpp"
-#include "option/option-raw-metadata.hpp"
 #include "capabilities-register.hpp"
 
 void CreatedCapabilityFlags() {

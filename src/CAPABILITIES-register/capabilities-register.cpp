@@ -1,5 +1,4 @@
 #include "capabilities-register.hpp"
-#include "option/option-raw-metadata.hpp"
 #include <cstdint>
 #include <sys/types.h>
 #include <unordered_map>

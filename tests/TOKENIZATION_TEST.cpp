@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../include/core-hpp/tokenization.hpp"
+#include "../include/kls/cli/parser/tokenization.hpp"
 
 namespace{
 // 1. Literal tokens
