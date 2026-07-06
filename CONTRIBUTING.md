@@ -1,183 +1,191 @@
 # Contributing to kls
 
-kls is a security-focused directory listing tool.
+`kls` welcomes external contributions. The project is experimental, but
+changes must preserve its security-oriented design.
 
-## Philosophy
+## Before contributing
 
-- One tool, one responsibility.
-- Security-first visibility.
-- Read-only, report-only. kls never modifies the filesystem.
+For bug fixes and small improvements, open a focused pull request.
 
----
+Before implementing a large feature or architectural change, open a discussion
+or issue describing:
 
-## Before writing any code
+- The problem.
+- The proposed behavior.
+- Security implications.
+- Compatibility implications.
+- Expected tests.
+- Performance or resource implications.
 
-Open an issue first. Describe what you want to change and why.
-I'll let you know if it's something I want before you spend time on it.
+During `stabilize/core-baseline`, reliability work takes priority over new
+detectors.
 
----
+## Development principles
 
-## Architecture overview
+Contributions should preserve these constraints:
 
-Understanding the pipeline is mandatory before contributing anything.
+- Linux-only.
+- Read-only and report-only.
+- No intentional filesystem mutation.
+- Explicit error propagation.
+- Coverage failures must not be hidden.
+- Evidence must remain separate from interpretation.
+- Minimal dependencies.
+- No exception-based control flow in the core.
+- Prefer `std::expected` or explicit result types.
+- Avoid `std::any`.
+- Avoid mutable global registries.
+- Avoid unnecessary global functions.
+- Do not add performance claims without reproducible measurements.
 
-Every invocation follows this exact sequence:
-argv → tokenization → parsing → validation → executor → pipeline
+## Language and naming
 
-**tokenization** — splits raw strings into typed tokens (OPTION, LITERAL, POSITIONAL).
+All code, comments, commit messages, and project documentation must be in
+English.
 
-**parsing** — normalizes tokens against the option registry. Aliases are resolved
-here (`-a` → `--all`). Values are attached to their options.
+C++ naming conventions:
 
-**validation** — enforces conflicts, requirements, type correctness, and
-deduplication. Also sorts options by execution category.
+| Element | Convention | Example |
+| --- | --- | --- |
+| Types | `PascalCase` | `AuditResult` |
+| Functions | `snake_case` | `run_audit` |
+| Variables | `snake_case` | `root_directory` |
+| Namespaces | `snake_case` | `kls::scanner` |
+| Files | `snake_case` | `audit_result.hpp` |
+| `constexpr` variables | `kPascalCase` | `kDefaultQueueCapacity` |
+| Enum values | `snake_case` | `Severity::critical` |
+| Macros | `UPPER_SNAKE_CASE` | `KLS_HAS_OPENAT2` |
 
-**executor** — routes to the correct command handler.
+Use `clang-format` for C++ formatting.
 
-**pipeline (inside LIST_HANDLER)** — four sequential phases:
-1. Collection — filesystem traversal, `statx` per entry, populates `FileEntry` vector.
-2. Filtering  — `FilteringProcess` handlers reduce the vector.
-3. Sorting    — `FilteringProcess` handlers reorder the vector.
-4. Presentation — renders to stdout.
+## Commit convention
 
----
+Use Conventional Commits.
 
-## How to add a new option
+Examples:
 
-All options live in `src/option-register-information/option-information.cpp`
-inside `CreatedOptionData()`.
+```text
+fix(scanner): preserve object identity across analysis
+feat(report): add sarif renderer
+test(capabilities): cover malformed capability xattrs
+docs(security): document live filesystem limitations
+refactor(model): replace health flags with findings
+perf(scanner): reduce path allocation in traversal
+```
 
-Every option requires:
+Keep commits focused. Do not mix unrelated refactors, formatting, and behavior
+changes.
 
-- `normalized_name` — the canonical long form (`--my-option`).
-- `alias_name` — short form if it has one (`-m`). Optional.
-- `data_type` — what value it accepts: `NONE`, `STRING`, `DATE`, `SIZE`, `EXTENSION`.
-- `category` — determines execution order and which pipeline phase owns it:
-  - `COLLECTION` — controls what gets collected.
-  - `FILTERING`  — reduces the entry set.
-  - `SORTING`    — reorders the entry set.
-  - `PRESENTATION` — controls output format.
-  - `GLOBAL`     — system flags handled before the pipeline.
-- `conflict_name` — list of options that cannot coexist with this one.
-- `requieres_name` — list of options that must be present for this one to work.
-- `handler` — a `FilteringProcess` lambda for FILTERING/SORTING, or
-  `std::monostate{}` for options the executor or presenter reads directly.
+## Branches
 
-After registering, add the corresponding shell completions in:
-- `completions/kls.bash`
-- `completions/kls.fish`
-- `completions/_kls`
+Use descriptive branch names grouped by purpose:
 
-And document it in `docs/LIST-ARCHITECTURE.md` under the correct table.
+```text
+fix/<description>
+feat/<description>
+docs/<description>
+refactor/<description>
+test/<description>
+stabilize/<description>
+```
 
----
+The current stabilization branch is:
 
-## How to add a new filter
+```text
+stabilize/core-baseline
+```
 
-A filter is a `FilteringProcess` — a `std::function<void(FilterStruct&)>`.
+## Build
 
-`FilterStruct` gives you:
-- `entries` — the live `vector<FileEntry>` you operate on.
-- `context` — the option's value as `std::any`, cast it to `std::string_view`.
+Developer configuration:
 
-The standard pattern is `std::erase_if` on `entries`. The filter must be
-a pure reduction — it never adds entries, never does I/O, never calls
-`stat` or any syscall. All data it needs must already be in `FileEntry`.
+```bash
+cmake -S . -B build \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DENABLE_SANITIZERS=ON \
+  -DBUILD_TESTING=ON
 
-If your filter needs data that `LongRecolection` does not currently populate,
-extend `LongRecolection` first, not the filter.
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
+```
 
----
+The baseline must support GCC and Clang.
 
-## How to add a new security alert
+## Tests
 
-Security alerts are `HealthFlag` entries inside `FileEntry::health`.
+Every behavioral change should include tests.
 
-Each alert has:
-- `code`  — snake_case identifier (`"world_writable"`, `"suid_active"`).
-- `level` — integer: 1 = info, 2 = medium, 3 = high.
+Important test areas:
 
-Alerts are populated during the **collection phase** in `LongRecolection`,
-not during filtering. The mode bits and metadata are already available from
-`statx` — no extra syscall should be needed for most alerts.
+- CLI parsing and validation.
+- Numeric overflow and malformed values.
+- Exit codes.
+- Recursive traversal.
+- Symbolic links and loops.
+- SUID/SGID.
+- Linux capabilities.
+- Immutable and append-only attributes.
+- Unknown UID/GID ownership.
+- Objects removed or replaced during scanning.
+- Permission-denied coverage.
+- Table, JSON, CSV, and SARIF output.
+- Output escaping.
+- Kernel feature fallback.
 
-The `--only-alerts` filter then reads `FileEntry::health` and erases
-entries with an empty health vector.
+Tests that require privileges or filesystem-specific features must clearly
+declare their prerequisites and skip safely when unavailable.
 
-If your alert requires a syscall not already in the collection path
-(e.g. `getxattr` for capabilities), gate it behind its own flag so the
-default path pays zero cost.
-
----
-
-## The FileEntry contract
-
-`FileEntry` is the contract between all four phases. Its fields are
-populated once during collection and are read-only from that point forward.
-
-Before adding a field to `FileEntry`, ask:
-- Is this data available from `statx` with the current mask?
-- Is it needed by more than one phase or option?
-- Does adding it increase the struct size in a way that matters at scale?
-
-If the answer to the last question is yes, bring it up in the issue first.
-
----
-
-## Code style
-
-- C++20. STL only. No external dependencies. No exceptions.
-- No raw owning pointers. No `new`/`delete`.
-- Prefer `std::string_view` over `const std::string&` for read-only string
-  parameters. Pass `string_view` by value, not by `const&`.
-- `static` for file-scoped variables, not `inline`.
-- Code should be readable without comments — but comments are welcome
-  when they add real context, especially for non-obvious syscall behavior.
-- For performance changes: include a comment with before/after timing.
-- For behavior changes: include a comment explaining what changed and why.
-
----
-
-## Testing
-
-Every new option or filter requires at least one test in the appropriate
-test file under `tests/`.
-
-- `TOKENIZATION_TEST.cpp` — new token types or edge cases in raw parsing.
-- `PARSING_TEST.cpp`      — option normalization, value attachment, aliases.
-- `VALIDATION_TEST.cpp`   — conflicts, requires, type validation.
-- `EXECUTOR_TEST.cpp`     — end-to-end behavior visible in stdout.
-
-Tests must pass under ASan + UBSan (the CI runs with `-fsanitize=address,undefined`).
-
-Do not commit empty test files.
-
----
-
-## Bug reports
-
-**Error name / description**
-What is the error or unexpected behavior.
-
-**Command executed**
-kls [options] [args]
-
-**Output received**
-Paste the actual output or error message.
-
-**Expected behavior**
-What you expected kls to do instead.
-
-**System**
-OS, kernel version, and compiler version.
-
----
+Do not fetch test dependencies from an unpinned branch. Pin dependencies to a
+specific release or commit.
 
 ## Pull requests
 
-- One PR per fix or improvement.
-- Reference the issue it closes: `Closes #N`.
-- Keep changes focused — do not mix unrelated fixes in the same PR.
-- If your PR touches `FileEntry`, the pipeline, or `LongRecolection`,
-  run the speed benchmarks (`SPEED_TEST_LIST`) and include the output
-  in the PR description.
+A pull request should explain:
+
+- What changed.
+- Why it changed.
+- User-visible impact.
+- Security impact.
+- Compatibility impact.
+- Tests executed.
+- Known limitations.
+
+The pull request should be small enough to review accurately.
+
+## Documentation
+
+Update all affected public contracts:
+
+- `README.md`
+- CLI help.
+- Manual page.
+- Shell completions.
+- Structured-output schema documentation.
+- `CHANGELOG.md`
+- Architecture or threat-model documentation when applicable.
+
+An option must not exist in only one of the parser, help, manual, completions,
+or README.
+
+## Performance changes
+
+Performance contributions require a reproducible benchmark description:
+
+- CPU.
+- RAM.
+- Kernel.
+- Filesystem.
+- Compiler and build type.
+- Dataset shape.
+- Object count.
+- Enabled analyzers.
+- Thread count.
+- Before and after measurements.
+- Peak memory.
+
+Optimize only after correctness and coverage semantics are established.
+
+## License
+
+By contributing, you agree that your contribution is distributed under
+GPL-3.0-only.

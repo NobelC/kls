@@ -1,34 +1,74 @@
-# Security Policy for kls
+# Security Policy
+
+## Project status
+
+`kls` is experimental software. Security boundaries, CLI behavior, finding
+schemas, and compatibility guarantees may change before `1.0.0`.
 
 ## Supported versions
 
-kls is currently in active development. Only the latest version on `main` receives fixes.
+Security fixes are provided for the latest development release and the current
+default branch on a best-effort basis.
 
 | Version | Supported |
-|---------|-----------|
-| latest (main) | ✅ |
-| older | ❌ |
+| --- | --- |
+| Latest `0.x` release | Yes |
+| Default branch | Yes |
+| Older experimental releases | No guaranteed support |
 
----
+A formal long-term support policy may be introduced after `1.0.0`.
 
 ## Reporting a vulnerability
 
-**Do not open a public issue for security vulnerabilities.**
+Use GitHub Issues for normal defects, incorrect findings, documentation
+problems, and feature requests.
 
-If you find a security issue in the analysis logic or metadata reporting, report it privately.
+Do **not** open a public issue for a suspected vulnerability that could affect
+users running `kls`, especially when it involves:
 
-Contact me directly via GitHub: [@NobelC](https://github.com/NobelC)
+- Memory safety.
+- Arbitrary code execution.
+- Path traversal or audit-root escape.
+- Symlink handling.
+- Privilege boundaries.
+- Unsafe parsing of filenames, extended attributes, or filesystem metadata.
+- Terminal or structured-output injection.
+- Denial of service against privileged or automated audits.
+- Incorrect behavior when scanning attacker-controlled directory trees.
 
-Include:
-- Description of the vulnerability
-- Command and parameters that trigger it
-- Potential impact
-- Steps to reproduce
+Report these privately through GitHub Private Vulnerability Reporting or a
+repository security advisory.
 
-I'll respond as soon as I can and credit you in the fix if you want.
+Include, when possible:
 
----
+- A concise description.
+- Affected version or commit.
+- Kernel and filesystem.
+- Whether `kls` ran as root.
+- Reproduction steps.
+- Expected and observed behavior.
+- Security impact.
+- A minimal test tree or fixture.
+- Any proposed mitigation.
 
-## 🔒 Release Cryptographic Verification
+## Disclosure process
 
-All official releases are cryptographically signed with GPG to ensure their integrity. Please refer to [docs/RELEASE-SIGNING.md](docs/RELEASE-SIGNING.md) for step-by-step instructions on verifying downloaded tarballs and packages.
+The maintainers will:
+
+1. Confirm receipt when possible.
+2. Reproduce and assess the report.
+3. Prepare a fix and regression test.
+4. Coordinate disclosure when the issue is confirmed.
+5. Credit the reporter unless anonymity is requested.
+
+No fixed response-time guarantee is currently offered.
+
+## Security scope
+
+`kls` audits local Linux filesystem metadata and related security conditions.
+It may run against attacker-controlled directory trees and may be executed with
+elevated privileges. The local nature of the tool does not remove security
+risk from its own parser, traversal engine, analyzers, or renderers.
+
+See [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md) for detailed assumptions,
+mitigations, and residual risks.
