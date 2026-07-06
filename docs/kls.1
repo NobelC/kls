@@ -1,0 +1,146 @@
+.TH KLS 1 "May 2026" "kls 0.1.1" "User Commands"
+.SH NAME
+kls \- a security-focused directory listing tool
+.SH SYNOPSIS
+.B kls
+[\fBOPTIONS\fR]... [\fBFILE\fR]...
+.SH DESCRIPTION
+.B kls
+is a directory listing tool designed with a strong focus on security auditing, file capabilities, vulnerabilities, and filesystem anomalies. It serves as a modern alternative to the standard \fBls\fR(1) command, adding rich metadata and alerts regarding potential security risks.
+.SH OPTIONS
+.SS Global Options
+.TP
+.BR \-h ", " \-\-help
+Display help message and exit.
+.TP
+.BR \-v ", " \-\-version
+Display version information and exit.
+.TP
+.B \-\-no\-color
+Disable colored output.
+.TP
+.BR \-q ", " \-\-quiet
+Run in quiet mode (suppress verbose output). Conflicts with \fB\-\-verbose\fR.
+.TP
+.B \-\-verbose
+Enable verbose output. Conflicts with \fB\-q\fR, \fB\-\-quiet\fR.
+.SS Collection & Filtering Options
+.TP
+.BR \-a ", " \-\-all
+Include hidden files and directories (those starting with a dot `.`).
+.TP
+.BR \-r ", " \-\-recursive
+Recursively list subdirectories.
+.TP
+.BI \-d ", " \-\-depth " DEPTH"
+Limit recursion depth to \fIDEPTH\fR levels. Requires \fB\-\-recursive\fR to be enabled.
+.TP
+.BI \-\-filter " PATTERN"
+Only display files and directories matching the glob \fIPATTERN\fR.
+.TP
+.BI \-\-modified\-before " DATE"
+Only display entries modified before the specified \fIDATE\fR (format: YYYY-MM-DD).
+.TP
+.BI \-\-modified\-after " DATE"
+Only display entries modified after the specified \fIDATE\fR (format: YYYY-MM-DD).
+.TP
+.B \-\-dirs\-only
+Only show directories in the listing.
+.TP
+.B \-\-file\-only
+Only show regular files, excluding directories and symbolic links.
+.TP
+.BI \-\-ext " EXTENSIONS"
+Only display files with extensions matching the comma-separated list in \fIEXTENSIONS\fR (e.g., \fBtxt,cpp,h\fR).
+.SS Sorting Options
+.TP
+.BI \-\-sort " CRITERIA"
+Sort the listing by \fICRITERIA\fR. Supported criteria values are:
+.RS
+.IP "\fBname\fR" 12
+Sort alphabetically by name (default).
+.IP "\fBsize\fR" 12
+Sort by size in descending order, breaking ties by name.
+.IP "\fBtype\fR" 12
+Sort by entry type, putting directories first.
+.IP "\fBmodified\fR" 12
+Sort by modification time.
+.IP "\fBext\fR or \fBextension\fR" 12
+Sort alphabetically by file extension.
+.IP "\fBseverity\fR" 12
+Sort by security alert severity (entries with more severe issues first).
+.RE
+.TP
+.B \-\-reverse
+Reverse the order of the sort.
+.TP
+.B \-\-dirs\-first
+List directories before other files.
+.SS Presentation Options
+.TP
+.BR \-l ", " \-\-long
+Use a long listing format displaying permissions, owner, group, size, modification date, and related properties.
+.TP
+.B \-\-no\-header
+Suppress the column headers in the output.
+.TP
+.B \-\-stats
+Display execution statistics and metrics at the end of the listing.
+.SS Security & Health Options
+.TP
+.B \-\-health
+Enable security health analysis, showing alerts and warnings for potential vulnerabilities (e.g., broken symbolic links, world-writable files).
+.TP
+.B \-\-no\-health
+Disable security health analysis display.
+.TP
+.B \-\-only\-alerts
+Only display filesystem entries that trigger a security health alert.
+.TP
+.B \-\-attack\-surface
+Enable a presentation view highlighting the attack surface of each entry (permissions, capabilities, setuid/setgid flags).
+.TP
+.B \-\-alerts\-first
+Sort the listing so that entries with active security health alerts appear first.
+.TP
+.B \-\-security\-report
+Generate and display a detailed security report summarizing the findings.
+.TP
+.B \-\-immutable
+Display files with the immutable attribute (if supported by the underlying filesystem).
+.TP
+.B \-\-setuid\-tree
+Recursively scan and display the tree of directories focusing on SetUID and SetGID files.
+.TP
+.B \-\-timeline
+Present file history or timeline based on filesystem timestamps.
+.TP
+.BI \-\-min\-severity " SEVERITY"
+Filter security health alerts to only show entries with a severity of at least \fISEVERITY\fR.
+.TP
+.B \-\-only\-anomalies
+Only show anomalous filesystem entries (such as hidden files, suspicious permissions, or invalid symbolic links).
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+General failure or incorrect usage of arguments.
+.TP
+.B 2
+Filesystem access error or command interruption.
+.SH EXAMPLES
+Show all files in the current directory in long format:
+.IP
+.B kls -a -l
+.PP
+Recursively search for files modified after May 1st, 2026, and show only security alerts:
+.IP
+.B kls --recursive --modified-after 2026-05-01 --only-alerts
+.PP
+Sort directories first and show the attack surface details:
+.IP
+.B kls --dirs-first --attack-surface
+.SH AUTHOR
+Created and maintained by Jeremy Nobel <jeremynobel16@gmail.com>.
