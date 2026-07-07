@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
-#include "../include/kls/cli/parser/tokenization.hpp"
-#include "../include/kls/cli/parser/parsing.hpp"
-#include "../include/kls/cli/parser/validator.hpp"
-#include "../include/kls/cli/option/option-implementation.hpp"
-#include "../include/kls/cli/parser/executor.hpp"
+#include <kls/cli/parser/tokenization.hpp>
+#include <kls/cli/parser/parsing.hpp>
+#include <kls/cli/parser/validator.hpp>
+#include <kls/cli/option/option-implementation.hpp>
+#include <kls/cli/parser/executor.hpp>
 #include <chrono>
 #include <sys/resource.h>
 #include <iostream>

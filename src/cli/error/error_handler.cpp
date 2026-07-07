@@ -1,5 +1,5 @@
-#include "../../../../kls/include/kls/cli/error/error_handler.hpp"
-#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include <kls/cli/error/error_handler.hpp>
+#include <kls/cli/option/option-raw-metadata.hpp>
 #include <iostream>
 #include <string_view>
 #include <format>
