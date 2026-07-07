@@ -1,3 +1,4 @@
+#pragma once
 #include <kls/cli/option/option-raw-metadata.hpp>
 
 namespace kls::audit {
