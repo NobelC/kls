@@ -2,6 +2,10 @@
 #include <kls/cli/option/option-raw-metadata.hpp>
 #include <kls/cli/token/group-token.hpp>
 #include <kls/cli/token/token-raw-metadata.hpp>
+
+//============================= NEW IMPLEMENTATIONS
+#include <kls/audit/audit_entry.hpp>
+//=============================
 #include "../../SUID-SGID-register/health-register.hpp"
 #include "../../white-list-routes/white-list-routes.hpp"
 #include "../../CAPABILITIES-register/capabilities-register.hpp"
@@ -23,7 +27,6 @@
 #include <linux/stat.h>
 #include <memory>
 #include <numeric>
-#include <pthread.h>
 #include <pwd.h>
 #include <queue>
 #include <mutex>
@@ -89,7 +92,7 @@ struct DirDelete{
 
 using DirPtr = std::unique_ptr<DIR, DirDelete>;
 
-void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct statx &stx) {
+void PerformHealthChecks(kls::audit::AuditEntry &fe, std::string_view full_path, const struct statx &stx) {
     auto AddFlag = [&](ID id) {
         const HealthFlag* flag = GetHealthFlag(id);
         if (flag) { fe.health.emplace_back(*flag); }
@@ -270,7 +273,7 @@ void PerformHealthChecks(FileEntry &fe, std::string_view full_path, const struct
     }
 }
 
-void PerformCapabilities(FileEntry &fe, std::string_view full_path){
+void PerformCapabilities(kls::audit::AuditEntry &fe, std::string_view full_path){
   auto AddCapability = [&](ID id) {
         const HealthFlag* flag = GetCapabilityFlag(id);
         if (flag) { fe.capabilities.emplace_back(*flag); }
@@ -331,7 +334,7 @@ void PerformCapabilities(FileEntry &fe, std::string_view full_path){
 
 }
 
-void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
+void ProcessGeneralRecolection(kls::audit::AuditEntry &fe, const std::string &full_path,
                      std::string_view name, std::string_view current_path, const Option& health) {
     fe.inode = 0;
     fe.size = 0;
@@ -389,7 +392,7 @@ void ProcessGeneralRecolection(FileEntry &fe, const std::string &full_path,
     }
 }
 
-void ProcessPrinter(std::vector<FileEntry> &entries, const Option& option_bool,
+void ProcessPrinter(std::vector<kls::audit::AuditEntry> &entries, const Option& option_bool,
                     std::unordered_map<uid_t, std::string>& cache_owner, std::unordered_map<uid_t, std::string>& cache_group) {
   if (entries.empty()) {
     return;
@@ -569,7 +572,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
   std::condition_variable condition_queue;
   bool finished_recolection = false;
 
-  std::vector<FileEntry> file_entry;
+  std::vector<kls::audit::AuditEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
   std::unordered_map<uid_t, std::string> cache_owner;
@@ -663,7 +666,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
   batch.reserve(512);
 
     auto thread_work = [&](){
-    FileEntry fe;
+    kls::audit::AuditEntry fe;
     while(true){
       std::vector<RecolectionShared> local_lote;
       {
