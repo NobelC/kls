@@ -1,4 +1,5 @@
 #include <kls/analyzers/health_analyzer.hpp>
+#include <kls/platform/unique_fd.hpp>
 #include "../../src/SUID-SGID-register/health-register.hpp"
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -91,10 +92,10 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
         if (has_exec && (stx.stx_mode & (S_IWGRP | S_IWOTH))) {
           AddFlag(ID("SU08"));
         }
-        int fd = open(std::string(full_path).c_str(), O_RDONLY | O_NONBLOCK);
-        if (fd != -1) {
+        kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
+        if (fd) {
             int flags = 0;
-            if (ioctl(fd, FS_IOC_GETFLAGS, &flags) != -1) {
+            if (::ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) != -1) {
                 if (flags & FS_IMMUTABLE_FL) {
                   AddFlag(ID("IMMU"));
                 }
@@ -102,7 +103,6 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
                   AddFlag(ID("APND"));
                 }
             }
-            close(fd);
         }
     }
 
@@ -157,10 +157,10 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
         }
 
         if (is_reg) {
-            int fd = open(std::string(full_path).c_str(), O_RDONLY);
-            if (fd != -1) {
+          kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY)};
+            if (fd) {
               std::array<char, 4> buffer = {0};
-                ssize_t n = read(fd, buffer.data(), 4);
+                ssize_t n = read(fd.get(), buffer.data(), 4);
                 close(fd);
 
                 if (n >= 2) {
