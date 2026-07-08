@@ -1,4 +1,6 @@
-#include <kls/analyzers/capability_analyzer.hpp>
+#include "../../include/kls/analyzers/capability_analyzer.hpp"
+#include "../../include/kls/findings/health_flags.hpp"
+#include "../CAPABILITIES-register/capabilities-register.hpp"
 #include <array>
 #include <string>
 #include <string_view>
@@ -9,9 +11,9 @@
 #include <linux/xattr.h>
 #include <linux/capability.h>
 
-void kls::analyzer::analyze_capability(kls::audit::AuditEntry &fe, std::string_view full_path) noexcept{
+void kls::analyzer::analyze_capability(kls::audit::AuditEntry &fe, std::string_view full_path){
     auto AddCapability = [&](ID id) {
-        const HealthFlag* flag = GetCapabilityFlag(id);
+        const kls::findings::HealthFlags* flag = GetCapabilityFlag(id);
         if (flag) { fe.capabilities.emplace_back(*flag); }
   };
   std::array<uint8_t,64> buffer;

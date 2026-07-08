@@ -1,6 +1,7 @@
-#include <kls/cli/option/option-implementation.hpp>
-#include <kls/cli/option/option-raw-metadata.hpp>
-#include <kls/detail/transparent-hash.hpp>
+#include "../../../include/kls/cli/option/option-implementation.hpp"
+#include "../../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../../include/kls/detail/transparent-hash.hpp"
+#include "../../../include/kls/audit/audit_entry.hpp"
 #include <algorithm>
 #include <any>
 #include <array>
@@ -20,8 +21,13 @@
 #include <pwd.h>
 #include <grp.h>
 #include <string>
+#include "../../../include/kls/audit/audit_entry.hpp"
+#include "../../../include/kls/findings/health_flags.hpp"
 
 namespace {
+
+using AuditEntry = kls::audit::AuditEntry;
+
 std::string FormatTime(const std::time_t &time) {
   std::array<char, 20> buffer;
   const auto *tm_ptr = std::localtime(&time);
@@ -179,7 +185,7 @@ void CreatedOptionData() {
     }
 
     std::string pattern(*pattern_sv_ptr);
-    std::erase_if(filter_contex.entries, [&pattern](const FileEntry &e) {
+    std::erase_if(filter_contex.entries, [&pattern](const AuditEntry &e) {
       return fnmatch(pattern.c_str(), e.name.c_str(), 0) != 0;
     });
   });
@@ -198,7 +204,7 @@ void CreatedOptionData() {
     }
 
     const std::string_view &target_date = *date_ptr;
-    std::erase_if(filter_contex.entries, [&target_date](const FileEntry &e) {
+    std::erase_if(filter_contex.entries, [&target_date](const AuditEntry &e) {
       const auto &file_date = FormatTime(e.mtime);
       return file_date >= target_date;
     });
@@ -218,7 +224,7 @@ void CreatedOptionData() {
     }
 
     const std::string_view &target_date = *date_ptr;
-    std::erase_if(filter_contex.entries, [&target_date](const FileEntry &e) {
+    std::erase_if(filter_contex.entries, [&target_date](const AuditEntry &e) {
       const auto &file_date = FormatTime(e.mtime);
       return file_date <= target_date;
     });
@@ -231,7 +237,7 @@ void CreatedOptionData() {
   dirs_only.category = OptionCategory::FILTERING;
   dirs_only.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::erase_if(filter_contex.entries,
-                  [](const FileEntry &e) { return !e.is_directory; });
+                  [](const AuditEntry &e) { return !e.is_directory; });
   });
   GeneralOptionLog(dirs_only);
 
@@ -240,7 +246,7 @@ void CreatedOptionData() {
   file_only.data_type = TypeDataReceived::NONE;
   file_only.category = OptionCategory::FILTERING;
   file_only.handler = FilteringProcess([](FilterStruct &filter_contex) {
-    std::erase_if(filter_contex.entries, [](const FileEntry &e) {
+    std::erase_if(filter_contex.entries, [](const AuditEntry &e) {
       return (e.is_directory || e.is_symlink);
     });
   });
@@ -285,7 +291,7 @@ void CreatedOptionData() {
     }
 
     std::erase_if(filter_contex.entries,
-                  [&table_extension](const FileEntry &e) {
+                  [&table_extension](const AuditEntry &e) {
                     if (e.extension.empty()) {
                       return true;
                     }
@@ -313,7 +319,7 @@ void CreatedOptionData() {
     const auto size = FormatSize(size_num);
 
     std::erase_if(filter_contex.entries,
-                  [&size](const FileEntry &e) { return !(size <= e.size); });
+                  [&size](const AuditEntry &e) { return !(size <= e.size); });
   });
   GeneralOptionLog(larger_than);
 
@@ -336,7 +342,7 @@ void CreatedOptionData() {
     const auto size = FormatSize(size_num);
 
     std::erase_if(filter_contex.entries,
-                  [&size](const FileEntry &e) { return !(size >= e.size); });
+                  [&size](const AuditEntry &e) { return !(size >= e.size); });
   });
   GeneralOptionLog(smaller_than);
 
@@ -354,7 +360,7 @@ owner_filter.handler = FilteringProcess([](FilterStruct &filter_contex) {
   const std::string_view owner = *owner_raw;
   std::unordered_map<uid_t, std::string> cache_owner; 
 
-  std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
+  std::erase_if(filter_contex.entries, [&](const AuditEntry &e) {
     auto it = cache_owner.find(e.uid);
     if (it == cache_owner.end()) {
       const struct passwd *pw = getpwuid(e.uid);
@@ -378,7 +384,7 @@ GeneralOptionLog(owner_filter);
   const std::string_view group = *group_raw;
   std::unordered_map<gid_t, std::string> cache_group; 
 
-  std::erase_if(filter_contex.entries, [&](const FileEntry &e) {
+  std::erase_if(filter_contex.entries, [&](const AuditEntry &e) {
     auto it = cache_group.find(e.gid);
     if (it == cache_group.end()) {
       const struct group *gp = getgrgid(e.gid); 
@@ -403,7 +409,7 @@ GeneralOptionLog(owner_filter);
       if(ercc != std::errc{}){
         return;
       }
-      std::erase_if(filter_contex.entries, [n_link](const FileEntry& e){
+      std::erase_if(filter_contex.entries, [n_link](const AuditEntry& e){
           return n_link > e.nlinks; 
           });
       });
@@ -424,10 +430,10 @@ GeneralOptionLog(owner_filter);
         return;
       }
 
-      std::erase_if(filter_contex.entries, [min_severity_value](const FileEntry& e){
+      std::erase_if(filter_contex.entries, [min_severity_value](const AuditEntry& e){
           bool has_high_severity  =  std::ranges::any_of(e.health, [min_severity_value](uint8_t lvl){
                 return lvl >= min_severity_value;
-              }, &HealthFlag::level);
+              }, &kls::findings::HealthFlags::level);
           return !has_high_severity;
           });
       });
@@ -449,36 +455,36 @@ GeneralOptionLog(owner_filter);
     std::string criteria(*criteria_ptr);
     if (criteria == "name") {
       std::ranges::sort(filter_contex.entries,
-                        [](const FileEntry &a, const FileEntry &b) {
+                        [](const AuditEntry &a, const AuditEntry &b) {
                           return a.name < b.name;
                         });
     } else if (criteria == "size") {
       std::ranges::sort(
-          filter_contex.entries, [](const FileEntry &a, const FileEntry &b) {
+          filter_contex.entries, [](const AuditEntry &a, const AuditEntry &b) {
             // Tamaño descendente, desempate por nombre
             return std::tie(b.size, a.name) < std::tie(a.size, b.name);
           });
     } else if (criteria == "type") {
       std::ranges::sort(filter_contex.entries,
-                        [](const FileEntry &a, const FileEntry &b) {
+                        [](const AuditEntry &a, const AuditEntry &b) {
                           // Directorios primero (true > false)
                           return std::tie(b.is_directory, a.name) <
                                  std::tie(a.is_directory, b.name);
                         });
     } else if (criteria == "modified") {
       std::ranges::sort(
-          filter_contex.entries, [](const FileEntry &a, const FileEntry &b) {
+          filter_contex.entries, [](const AuditEntry &a, const AuditEntry &b) {
             return std::tie(a.mtime, a.name) < std::tie(b.mtime, b.name);
           });
     } else if (criteria == "ext" || criteria == "extension") {
-      std::ranges::sort(filter_contex.entries, [](const FileEntry &a,
-                                                  const FileEntry &b) {
+      std::ranges::sort(filter_contex.entries, [](const AuditEntry &a,
+                                                  const AuditEntry &b) {
         return std::tie(a.extension, a.name) < std::tie(b.extension, b.name);
       });
     } else if (criteria == "severity") {
       std::ranges::sort(filter_contex.entries,std::ranges::greater(),
-                        [](const FileEntry &entry) {
-                          auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::level);
+                        [](const AuditEntry &entry) {
+                          auto it = std::ranges::max_element(entry.health, {}, &kls::findings::HealthFlags::level);
                           return it == entry.health.end()? 0 : it->level;
                         });
     }
@@ -490,8 +496,8 @@ GeneralOptionLog(owner_filter);
   alerts_first.category = OptionCategory::SORTING;
   alerts_first.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::ranges::sort(filter_contex.entries,std::ranges::greater(),
-                      [](const FileEntry &entry) {
-                        auto it = std::ranges::max_element(entry.health, {}, &HealthFlag::level);
+                      [](const AuditEntry &entry) {
+                        auto it = std::ranges::max_element(entry.health, {}, &kls::findings::HealthFlags::level);
                         return it == entry.health.end() ? 0 : it->level;
                       });
   });
@@ -512,7 +518,7 @@ GeneralOptionLog(owner_filter);
   dirs_first.category = OptionCategory::SORTING;
   dirs_first.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::ranges::sort(filter_contex.entries,
-                      [](const FileEntry &a, const FileEntry &b) {
+                      [](const AuditEntry &a, const AuditEntry &b) {
                         return std::tie(b.is_directory, a.name) <
                                std::tie(a.is_directory, b.name);
                       });
@@ -545,7 +551,7 @@ GeneralOptionLog(owner_filter);
   only_alerts.normalized_name = "--only-alerts";
   only_alerts.category = OptionCategory::FILTERING;
   only_alerts.handler = FilteringProcess([](FilterStruct& filter_contex){
-    std::erase_if(filter_contex.entries, [](const FileEntry& e){
+    std::erase_if(filter_contex.entries, [](const AuditEntry& e){
         return e.health.empty(); 
     });
 });

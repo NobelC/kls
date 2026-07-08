@@ -3,13 +3,13 @@
 #include <sys/types.h>
 #include <unordered_map>
 
-static std::unordered_map<uint32_t,HealthFlag> table_health_flag;
+static std::unordered_map<uint32_t,kls::findings::HealthFlags> table_health_flag;
 
-void GeneralHealthFlagsLog(const HealthFlag& health){
+void GeneralHealthFlagsLog(const kls::findings::HealthFlags& health){
   table_health_flag.insert_or_assign(health.id.get_value(), health);
 }
 
-const HealthFlag* GetHealthFlag(const ID& id){
+const kls::findings::HealthFlags* GetHealthFlag(const ID& id){
   auto its = table_health_flag.find(id.get_value());
   if(its == table_health_flag.end()){
     return nullptr;

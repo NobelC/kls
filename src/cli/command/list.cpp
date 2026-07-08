@@ -1,12 +1,13 @@
-#include <kls/cli/option/option-implementation.hpp>
-#include <kls/cli/option/option-raw-metadata.hpp>
-#include <kls/cli/token/group-token.hpp>
-#include <kls/cli/token/token-raw-metadata.hpp>
+#include "../../include/kls/cli/option/option-implementation.hpp"
+#include "../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../include/kls/cli/token/group-token.hpp"
+#include "../../include/kls/cli/token/token-raw-metadata.hpp"
 
 //============================= NEW IMPLEMENTATIONS
-#include <kls/audit/audit_entry.hpp>
-#include <kls/analyzers/health_analyzer.hpp>
-#include <kls/analyzers/capability_analyzer.hpp>
+#include "../../include/kls/audit/audit_entry.hpp"
+#include "../../include/kls/analyzers/health_analyzer.hpp"
+#include "../../include/kls/analyzers/capability_analyzer.hpp"
+#include "../../include/kls/report/render_report.hpp"
 //=============================
 #include "../../SUID-SGID-register/health-register.hpp"
 #include "../../CAPABILITIES-register/capabilities-register.hpp"
@@ -67,7 +68,6 @@ struct Option {
   bool only_capability : 1;
 };
 
-constexpr unsigned int MAX_LENGTH = 30;
 time_t TIME_NOW = time(nullptr);
 
 struct PendingDir {
@@ -174,8 +174,7 @@ void LIST_HANDLER(const GroupToken &token_group) {
   std::vector<kls::audit::AuditEntry> file_entry;
   std::queue<PendingDir> pending_dirs;
 
-  std::unordered_map<uid_t, std::string> cache_owner;
-  std::unordered_map<gid_t, std::string> cache_group;
+
 
   const Option option_bool = {
       .recursive = std::ranges::any_of(
@@ -387,5 +386,11 @@ void LIST_HANDLER(const GroupToken &token_group) {
   run_pipeline(OptionCategory::FILTERING);
   run_pipeline(OptionCategory::SORTING);
 
-  ProcessPrinter(file_entry, option_bool, cache_owner, cache_group);
+  kls::report::RenderOptions render_options{};
+  render_options.show_headers = !option_bool.no_header_format;
+  render_options.show_findings = !option_bool.no_health;
+
+  kls::report::render_report(
+    std::cout, std::span<const kls::audit::AuditEntry>(file_entry),render_options
+    );
 }

@@ -1,5 +1,4 @@
 #include "capabilities-register.hpp"
-#include "capabilities-register.hpp"
 
 void CreatedCapabilityFlags() {
 

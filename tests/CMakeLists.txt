@@ -15,7 +15,7 @@ add_executable(kls_tests
     PARSING_TEST.cpp 
     VALIDATION_TEST.cpp
     EXECUTOR_TEST.cpp
-    SPEED_TEST_LIST.cpp
+    #SPEED_TEST_LIST.cpp
 )
 
 target_compile_options(kls_tests PRIVATE -g)

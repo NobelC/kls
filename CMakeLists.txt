@@ -49,6 +49,12 @@ set(CORE_SOURCES
     src/CAPABILITIES-register/capabilities-register-log.cpp
     src/CAPABILITIES-register/capabilities-register.cpp
     src/CAPABILITIES-register/print-capabilities.cpp
+    src/platform/unique_fd.cpp
+    src/analyzers/health_analyzer.cpp
+    src/analyzers/capability_analyzer.cpp
+    src/report/render_report.cpp
+    src/platform/identity_resolver.cpp
+    src/platform/unique_fd.cpp
 )
 
 # 3. Core Library

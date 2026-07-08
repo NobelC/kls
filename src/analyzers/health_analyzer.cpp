@@ -1,6 +1,7 @@
-#include <kls/analyzers/health_analyzer.hpp>
-#include <kls/platform/unique_fd.hpp>
+#include "../../include/kls/analyzers/health_analyzer.hpp"
+#include "../../include/kls/platform/unique_fd.hpp"
 #include "../../src/SUID-SGID-register/health-register.hpp"
+#include "../white-list-routes/white-list-routes.hpp"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <linux/fs.h>
@@ -13,9 +14,9 @@
 
 constexpr static int TOLERANCE_TIME = 1000;
 
-void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view full_path, const struct statx &stx,const time_t& TIME_NOW) noexcept {
+void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view full_path, const struct statx &stx,const time_t& TIME_NOW) {
       auto AddFlag = [&](ID id) {
-        const HealthFlag* flag = GetHealthFlag(id);
+        const kls::findings::HealthFlags* flag = GetHealthFlag(id);
         if (flag) { fe.health.emplace_back(*flag); }
     };
 
@@ -157,11 +158,10 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
         }
 
         if (is_reg) {
-          kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY)};
+          kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY | O_CLOEXEC)};
             if (fd) {
               std::array<char, 4> buffer = {0};
                 ssize_t n = read(fd.get(), buffer.data(), 4);
-                close(fd);
 
                 if (n >= 2) {
                     bool is_script = (buffer[0] == '#' && buffer[1] == '!');

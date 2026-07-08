@@ -1,10 +1,10 @@
 // #include "../include/command/command-implementation.hpp"
-#include <kls/cli/parser/executor.hpp>
-#include <kls/cli/parser/parsing.hpp>
-#include <kls/cli/parser/tokenization.hpp>
-#include <kls/cli/parser/validator.hpp>
-#include <kls/cli/option/option-implementation.hpp>
-#include <kls/cli/token/group-token.hpp>
+#include "../include/kls/cli/parser/tokenization.hpp"
+#include "../include/kls/cli/parser/executor.hpp"
+#include "../include/kls/cli/parser/parsing.hpp"
+#include "../include/kls/cli/parser/validator.hpp"
+#include "../include/kls/cli/option/option-implementation.hpp"
+#include "../include/kls/cli/token/group-token.hpp"
 #include <string>
 #include <vector>
 

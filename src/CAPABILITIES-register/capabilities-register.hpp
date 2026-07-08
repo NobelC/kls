@@ -1,7 +1,8 @@
 #pragma once
-#include "../../include/kls/cli/option/option-raw-metadata.hpp"
+#include "../../include/kls/findings/health_flags.hpp"
+#include "../../include/kls/detail/Id.hpp"
 
-void GeneralCapabilityLog(const HealthFlag& health);
+void GeneralCapabilityLog(const kls::findings::HealthFlags& health);
 void PrintCapabilityFlags(const ID& id);
-const HealthFlag* GetCapabilityFlag(const ID& id);
+const kls::findings::HealthFlags* GetCapabilityFlag(const ID& id);
 void CreatedCapabilityFlags();

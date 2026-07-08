@@ -1,5 +1,9 @@
 #pragma once
-#include <kls/cli/option/option-raw-metadata.hpp>
+#include <cstdint>
+#include <sys/types.h>
+#include <string>
+#include "../findings/health_flags.hpp"
+#include <vector>
 
 namespace kls::audit {
   struct AuditEntry {
@@ -26,8 +30,8 @@ namespace kls::audit {
   std::string path;
   std::string symlink_target;
   std::string extension;
-  std::vector<HealthFlag> health;
-  std::vector<HealthFlag> capabilities;
+  std::vector<kls::findings::HealthFlags> health;
+  std::vector<kls::findings::HealthFlags> capabilities;
 
   AuditEntry() noexcept
   {
