@@ -1,6 +1,7 @@
 #pragma once
 #include <variant>
-namespace kls::Result{
+
+namespace kls {   
   template <typename T>
     struct Success{
       T value;
@@ -10,6 +11,7 @@ namespace kls::Result{
     struct Failure{
       E error;
     };
+
   template <typename T, typename E>
-    using Result = std::variant<Success<T> , Failure<E>>;
+    using Result = std::variant<Success<T>, Failure<E>>;
 }
