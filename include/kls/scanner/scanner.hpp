@@ -17,6 +17,8 @@ namespace kls::scanner {
     traverse_target,
   };
 
+
+
   struct ScanOptions {
       bool recursive = false;
       bool include_hidden = false;

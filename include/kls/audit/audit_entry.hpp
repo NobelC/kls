@@ -25,7 +25,12 @@ namespace kls::audit {
   time_t mtime = 0;
   time_t btime = 0; 
 
-  std::string full_path;
+bool symlink_broken : 1 = false;
+bool has_capabilities : 1 = false;
+bool correct_state : 1 = false;
+
+std::string name;
+std::string path;
   std::string symlink_target;
   std::string extension;
   std::vector<kls::findings::HealthFlags> health;
@@ -45,7 +50,12 @@ namespace kls::audit {
     is_symlink = false;
     mtime = 0;
     btime = 0;
-    full_path.clear();
+symlink_broken = false;
+has_capabilities = false;
+correct_state = false;
+
+name.clear();
+path.clear();
     symlink_target.clear();
     extension.clear();
     health.clear();
