@@ -54,7 +54,7 @@ set(CORE_SOURCES
     src/analyzers/capability_analyzer.cpp
     src/report/render_report.cpp
     src/platform/identity_resolver.cpp
-    src/platform/unique_fd.cpp
+    src/scanner/collect_metadata.cpp
 )
 
 # 3. Core Library
