@@ -2,11 +2,10 @@
 
 #include <cstdint>
 #include <ctime>
+#include <optional>
 #include <string>
 #include <sys/types.h>
-#include <vector>
-
-#include "../findings/health_flags.hpp"
+#include "../filesystem/file_type.hpp"
 
 namespace kls::audit {
 
@@ -18,49 +17,16 @@ struct AuditEntry {
   uid_t uid = 0;
   gid_t gid = 0;
 
-  bool is_directory : 1 = false;
-  bool is_symlink : 1 = false;
-  bool symlink_broken : 1 = false;
-  bool has_capabilities : 1 = false;
-  bool correct_state : 1 = false;
+  filesystem::FileType type = filesystem::FileType::unknown;
+
 
   time_t mtime = 0;
   time_t btime = 0;
 
   std::string name;
-  std::string path;
-  std::string symlink_target;
+  std::string full_path;
+  std::optional<std::string> symlink_target = std::nullopt;
   std::string extension;
-
-  std::vector<kls::findings::HealthFlags> health;
-  std::vector<kls::findings::HealthFlags> capabilities;
-
-  AuditEntry() = default;
-
-  void clear() noexcept {
-    inode = 0;
-    size = 0;
-    mode = 0;
-    nlinks = 0;
-    uid = 0;
-    gid = 0;
-
-    is_directory = false;
-    is_symlink = false;
-    symlink_broken = false;
-    has_capabilities = false;
-    correct_state = false;
-
-    mtime = 0;
-    btime = 0;
-
-    name.clear();
-    path.clear();
-    symlink_target.clear();
-    extension.clear();
-    health.clear();
-    capabilities.clear();
-  }
 };
 
 }

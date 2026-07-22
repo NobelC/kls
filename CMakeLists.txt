@@ -54,7 +54,6 @@ set(CORE_SOURCES
     src/analyzers/capability_analyzer.cpp
     src/report/render_report.cpp
     src/platform/identity_resolver.cpp
-    src/scanner/scanner.cpp
 )
 
 # 3. Core Library
@@ -69,6 +68,18 @@ configure_file(
     "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
     "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
 )
+
+# ====================================================================================
+add_library(kls_scanner STATIC 
+  src/scanner/scanner.cpp
+  src/scanner/collect_metadata.cpp
+)
+target_include_directories(kls_scanner PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+#==============================================================================
+
 
 # 5. Main Executable
 add_executable(kls src/kls-main.cpp)

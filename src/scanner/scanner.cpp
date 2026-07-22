@@ -1,7 +1,9 @@
 #include "../../include/kls/scanner/scanner.hpp"
-
+#include "kls/filesystem/file_type.hpp"
+#include "../../include/kls/scanner/detail/file_type_conversion.hpp"
 #include <array>
 #include <cerrno>
+#include <cstdint>
 #include <linux/limits.h>
 #include <linux/stat.h>
 #include <optional>
@@ -31,7 +33,7 @@ namespace kls::scanner {
     std::string path;
     std::size_t depth;
   };
-  
+
   kls::scanner::DiscoveryResult discover_entries(const std::string& root, const ScanOptions& options){
     
     //================================= Scanner Process =====================================
@@ -183,70 +185,62 @@ namespace kls::scanner {
           continue;
         }
 
-        unsigned char type_correct = entry->d_type;
-
-        if(type_correct == DT_UNKNOWN){
+        filesystem::FileType type_correct = filesystem::FileType::unknown;
+        type_correct = scanner::detail::type_from_dirent(entry->d_type);
+        
+        if(type_correct == filesystem::FileType::unknown){
           errno = 0;
           struct statx stx {};
-          int result_statx = statx(::dirfd(dir_ptr.get()) , entry->d_name,AT_SYMLINK_NOFOLLOW, STATX_TYPE, &stx ); 
-          bool has_type = (stx.stx_mask & STATX_TYPE) != 0;
-          open_error= result_statx == -1 ? errno : 0;
+          const int result_statx = statx(::dirfd(dir_ptr.get()) , entry->d_name,AT_SYMLINK_NOFOLLOW, STATX_TYPE, &stx );
 
-          if(result_statx == -1 || !has_type){
+          if(result_statx == -1){
+            open_error = errno;
             full_path.append(temp_name);
             add_issue(ScanIssueCode::entry_type_detection_failed, full_path,open_error);
             full_path.resize(base_len);
             continue;
           }
+         
+          if((stx.stx_mask & STATX_TYPE) == 0){
+            full_path.append(temp_name);
+            add_issue(ScanIssueCode::entry_type_detection_failed,full_path,0);
+            full_path.resize(base_len);
+            continue;
+          }
 
-          if (S_ISDIR(stx.stx_mode)) {
-            type_correct = DT_DIR;
-          } 
-          else if (S_ISREG(stx.stx_mode)) {
-            type_correct = DT_REG;
-          } 
-          else if (S_ISLNK(stx.stx_mode)) {
-            type_correct = DT_LNK;
-          } 
-          else if (S_ISFIFO(stx.stx_mode)) {
-            type_correct = DT_FIFO;
-          } 
-          else if (S_ISCHR(stx.stx_mode)) {
-            type_correct = DT_CHR;
-          } 
-          else if (S_ISBLK(stx.stx_mode)) {
-            type_correct = DT_BLK;
-          } 
-          else if (S_ISSOCK(stx.stx_mode)) {
-          type_correct = DT_SOCK;
-          } 
-          else {
-            type_correct = DT_UNKNOWN;
+          mode_t type_result = stx.stx_mode;
+          type_correct = scanner::detail::type_from_mode(type_result);
+           
+          if(type_correct == filesystem::FileType::unknown){
+            full_path.append(temp_name);
+            add_issue(ScanIssueCode::entry_type_detection_failed, full_path,0 );
+            full_path.resize(base_len);
+            continue;
           }
 
         }
+        full_path.append(temp_name);
 
-        full_path.append(temp_name); 
-        if(type_correct == DT_DIR && options.recursive && actual_entry.depth < options.maximum_depth){
+        if(type_correct ==   filesystem::FileType::directory && options.recursive && actual_entry.depth < options.maximum_depth){
           pending_directories.push({
               .path = full_path,
               .depth = actual_entry.depth + 1,
           });
         }
 
-        // ===================================================== Seguimiento de symlinks
+        // ===================================================== read symlink
         std::optional<std::size_t> target_id = std::nullopt;
-        if(type_correct == DT_LNK && options.symlink_status == SymlinkMode::read){
+        if(type_correct ==   filesystem::FileType::symlink && options.symlink_status == SymlinkMode::read){
           errno = 0;
           std::array<char,PATH_MAX> buffer;
           ssize_t resolve_symlink = readlinkat(::dirfd(dir_ptr.get()),entry->d_name, buffer.data(), sizeof(buffer));
           open_error = resolve_symlink == -1 ? errno : 0;
 
           if(open_error != 0 || resolve_symlink == -1){
-            add_issue(ScanIssueCode::symlink_error_resolve,full_path,open_error); 
+            add_issue(ScanIssueCode::symlink_error_resolve,full_path,open_error);
           }
           else if(static_cast<std::size_t>(resolve_symlink) == buffer.size()){
-            add_issue(ScanIssueCode::symlink_target_truncated,full_path,0);
+            add_issue(ScanIssueCode::symlink_target_truncated, full_path, open_error);
           }
           else{
             auto index_target = scan_discovered_candidates.target_symlink.size();
@@ -259,8 +253,8 @@ namespace kls::scanner {
         scan_discovered_candidates.candidates.emplace_back(CandidateEntry{
             .name = std::move(temp_name),
             .parent = directory_id,
-            .inode = entry->d_ino,
-            .type = type_correct,
+            .discovered_inode = entry->d_ino == 0 ? std::nullopt : std::optional<std::uint64_t>(entry->d_ino) ,
+            .discovered_type = type_correct,
             .target_symlink_id = target_id
             });
         full_path.resize(base_len);
