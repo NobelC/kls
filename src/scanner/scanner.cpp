@@ -1,6 +1,6 @@
 #include "../../include/kls/scanner/scanner.hpp"
 #include "../../include/kls/filesystem/file_type.hpp"
-#include "../../include/kls/scanner/detail/file_type_conversion.hpp"
+#include "../../include/kls/detail/file_type_conversion.hpp"
 #include <array>
 #include <cerrno>
 #include <cstdint>
@@ -178,7 +178,7 @@ namespace kls::scanner {
         }
 
         filesystem::FileType type_correct = filesystem::FileType::unknown;
-        type_correct = ::scanner::detail::type_from_dirent(entry->d_type);
+        type_correct = detail::type_from_dirent(entry->d_type);
 
         if(type_correct == filesystem::FileType::unknown){
           errno = 0;
@@ -200,7 +200,7 @@ namespace kls::scanner {
           }
 
           mode_t type_result = stx.stx_mode;
-          type_correct = ::scanner::detail::type_from_mode(type_result);
+          type_correct = detail::type_from_mode(type_result);
           if(type_correct == filesystem::FileType::unknown){
             full_path.append(temp_name);
             add_issue(ScanIssueCode::entry_type_detection_failed, full_path,0 );
