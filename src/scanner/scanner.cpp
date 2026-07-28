@@ -1,5 +1,5 @@
 #include "../../include/kls/scanner/scanner.hpp"
-#include "kls/filesystem/file_type.hpp"
+#include "../../include/kls/filesystem/file_type.hpp"
 #include "../../include/kls/scanner/detail/file_type_conversion.hpp"
 #include <array>
 #include <cerrno>
@@ -17,7 +17,7 @@
 #include <memory>
 
 
-namespace kls::scanner { 
+namespace kls::scanner {
 
   struct DirDelete{
     void operator()(DIR* dir) const noexcept{
@@ -35,13 +35,10 @@ namespace kls::scanner {
   };
 
   kls::scanner::DiscoveryResult discover_entries(const std::string& root, const ScanOptions& options){
-    
     //================================= Scanner Process =====================================
-    
     DiscoveredOutput scan_discovered_candidates;
     std::queue<DirectoryRecord> pending_directories;
     std::string full_path; full_path.reserve(PATH_MAX);
-    
 
     pending_directories.push(DirectoryRecord{
         .path = root,
@@ -62,9 +59,7 @@ namespace kls::scanner {
       errno = 0;
       DirPtr dir_ptr(::opendir(actual_entry.path.c_str()));
       int open_error = dir_ptr == nullptr ? errno : 0;
-      //============================= ERROR ROOT ====================
-      //solo debo de conseguir la ruta absoluta para que la comparacion con root valga, los demas errores producidos no deben ser terminantes, solo debe ser issues
-      
+      //============================= ERROR ROOT ==================
       if(dir_ptr == nullptr && actual_entry.depth == 0){
         if(open_error == ENOENT){
           return kls::scanner::DiscoveryResult{
@@ -123,7 +118,6 @@ namespace kls::scanner {
         if(open_error == EACCES){
           add_issue(ScanIssueCode::directory_permission_denied, actual_entry.path, open_error);
         }
-        
         else if(open_error == ENOENT){
           add_issue(ScanIssueCode::entry_disappeared, actual_entry.path, open_error);
         }
@@ -162,7 +156,6 @@ namespace kls::scanner {
       scan_discovered_candidates.directory_paths.emplace_back(full_path);
 
       while(true){
-  
         errno = 0;
         struct dirent* entry = readdir(dir_ptr.get());
         open_error = errno;
@@ -176,7 +169,6 @@ namespace kls::scanner {
 
 
         std::string temp_name(entry->d_name);
-        
 
         if(temp_name == "." || temp_name == ".."){
           continue;
@@ -186,8 +178,8 @@ namespace kls::scanner {
         }
 
         filesystem::FileType type_correct = filesystem::FileType::unknown;
-        type_correct = scanner::detail::type_from_dirent(entry->d_type);
-        
+        type_correct = ::scanner::detail::type_from_dirent(entry->d_type);
+
         if(type_correct == filesystem::FileType::unknown){
           errno = 0;
           struct statx stx {};
@@ -200,7 +192,6 @@ namespace kls::scanner {
             full_path.resize(base_len);
             continue;
           }
-         
           if((stx.stx_mask & STATX_TYPE) == 0){
             full_path.append(temp_name);
             add_issue(ScanIssueCode::entry_type_detection_failed,full_path,0);
@@ -209,8 +200,7 @@ namespace kls::scanner {
           }
 
           mode_t type_result = stx.stx_mode;
-          type_correct = scanner::detail::type_from_mode(type_result);
-           
+          type_correct = ::scanner::detail::type_from_mode(type_result);
           if(type_correct == filesystem::FileType::unknown){
             full_path.append(temp_name);
             add_issue(ScanIssueCode::entry_type_detection_failed, full_path,0 );
@@ -248,7 +238,6 @@ namespace kls::scanner {
             target_id = index_target;
           }
         }
-        
         //=============================================================================
         scan_discovered_candidates.candidates.emplace_back(CandidateEntry{
             .name = std::move(temp_name),

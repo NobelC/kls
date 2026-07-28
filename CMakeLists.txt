@@ -73,6 +73,7 @@ configure_file(
 add_library(kls_scanner STATIC 
   src/scanner/scanner.cpp
   src/scanner/collect_metadata.cpp
+  src/scanner/orchestator.cpp
 )
 target_include_directories(kls_scanner PUBLIC
   ${PROJECT_SOURCE_DIR}/include

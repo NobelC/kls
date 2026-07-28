@@ -94,5 +94,5 @@ namespace kls::scanner {
   using DiscoveryResult = kls::Result<DiscoveredOutput, ScanError>; 
 
   [[nodiscard]] DiscoveryResult discover_entries(const std::string& root,const ScanOptions& options);
-  [[nodiscard]] ScanResult scan(const std::string& root, const ScanOptions& options);
+  [[nodiscard]] ScanResult oschestator(const std::string& root, const ScanOptions& options);
 }

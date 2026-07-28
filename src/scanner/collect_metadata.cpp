@@ -1,7 +1,7 @@
 #include "../../include/kls/scanner/collect_metadata.hpp"
 #include "../../include/kls/audit/audit_entry.hpp"
 #include "../../include/kls/scanner/scanner.hpp"
-#include "../include/kls/scanner/detail/file_type_conversion.hpp"
+#include "../../include/kls/scanner/detail/file_type_conversion.hpp"
 #include <cstddef>
 #include <fcntl.h>
 #include <linux/stat.h>
@@ -130,8 +130,7 @@ kls::scanner::ScanOutput collect_metadata(
       continue;
     }
 
-    const auto metadata_type =
-        kls::scanner::detail::type_from_mode(stx.stx_mode);
+    const auto metadata_type = ::scanner::detail::type_from_mode(stx.stx_mode);
 
     if (metadata_type == filesystem::FileType::unknown) {
       output.issues.emplace_back(ScanIssue{
