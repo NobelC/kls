@@ -1,5 +1,5 @@
 #include "../../include/kls/analyzers/capability_analyzer.hpp"
-#include "../../include/kls/findings/health_flags.hpp"
+#include "../../include/kls/findings/finding_flags.hpp"
 #include "../CAPABILITIES-register/capabilities-register.hpp"
 #include <array>
 #include <string>
@@ -11,17 +11,20 @@
 #include <linux/xattr.h>
 #include <linux/capability.h>
 
-void kls::analyzer::analyze_capability(kls::audit::AuditEntry &fe, std::string_view full_path){
+std::vector<ID> kls::analyzer::analyze_capability(const kls::audit::AuditEntry &fe){
+    std::vector<ID> finding_entry = {};
     auto AddCapability = [&](ID id) {
-        const kls::findings::HealthFlags* flag = GetCapabilityFlag(id);
-        if (flag) { fe.capabilities.emplace_back(*flag); }
+        const kls::findings::Finding* flag = GetCapabilityFlag(id);
+        if (flag) {
+          finding_entry.emplace_back(id);
+        }
   };
   std::array<uint8_t,64> buffer;
   std::memset(buffer.data(), 0, sizeof(buffer));
-  ssize_t size = getxattr(std::string(full_path).c_str(), XATTR_NAME_CAPS ,buffer.data(), sizeof(buffer));
+  ssize_t size = getxattr(std::string(fe.full_path).c_str(), XATTR_NAME_CAPS ,buffer.data(), sizeof(buffer));
 
-  if(size == -1){
-    return ;
+  if(size <= 0){
+    return finding_entry;
   }
 
   if(size > 0 ){
@@ -33,7 +36,7 @@ void kls::analyzer::analyze_capability(kls::audit::AuditEntry &fe, std::string_v
 
   if(version != VFS_CAP_REVISION_1 && version != VFS_CAP_REVISION_2 && version != VFS_CAP_REVISION_3){
     AddCapability(ID{"CA28"});
-    return ;
+    return finding_entry;
   }
 
   uint64_t permitted = ((uint64_t)cap_struct->data[1].permitted << 32) | cap_struct->data[0].permitted;
@@ -69,6 +72,5 @@ void kls::analyzer::analyze_capability(kls::audit::AuditEntry &fe, std::string_v
   if(permitted & ((1ULL << 29) | (1ULL << 30))){
     AddCapability(ID{"CA34"});
   }
-
-
+  return finding_entry;
 }

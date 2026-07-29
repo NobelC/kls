@@ -11,35 +11,39 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <array>
+#include <vector>
 
 constexpr static int TOLERANCE_TIME = 1000;
 
-void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view full_path, const struct statx &stx,const time_t& TIME_NOW) {
-      auto AddFlag = [&](ID id) {
-        const kls::findings::HealthFlags* flag = GetHealthFlag(id);
-        if (flag) { fe.health.emplace_back(*flag); }
+std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,const time_t& TIME_NOW) {
+  std::vector<ID> finding_entry = {};   
+  auto AddFlag = [&](ID id) {
+        const kls::findings::Finding* flag = GetHealthFlag(id);
+        if (flag) { 
+          finding_entry.emplace_back(id);      
+        }
     };
 
-    const bool is_suid = (stx.stx_mode & S_ISUID) != 0;
-    const bool is_sgid = (stx.stx_mode & S_ISGID) != 0;
-    const bool is_reg  = S_ISREG(stx.stx_mode);
-    const bool is_dir  = S_ISDIR(stx.stx_mode);
-    const bool is_lnk  = S_ISLNK(stx.stx_mode);
+    const bool is_suid = (fe.mode & S_ISUID) != 0;
+    const bool is_sgid = (fe.mode & S_ISGID) != 0;
+    const bool is_reg  = S_ISREG(fe.mode);
+    const bool is_dir  = S_ISDIR(fe.mode);
+    const bool is_lnk  = S_ISLNK(fe.mode);
 
     if (fe.mtime > (TIME_NOW + TOLERANCE_TIME)) {
       AddFlag(ID("SU13"));
     }
 
-    if ((stx.stx_mask & STATX_BTIME) && fe.btime > 0 && is_reg && 
-        (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mtime < (fe.btime - TOLERANCE_TIME))) {
+    if (fe.btime > 0 && is_reg && 
+        (fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mtime < (fe.btime - TOLERANCE_TIME))) {
         AddFlag(ID("SU14")); 
     }
 
-    if ((S_ISCHR(stx.stx_mode) || S_ISBLK(stx.stx_mode)) && !full_path.starts_with("/dev/")) {
+    if ((S_ISCHR(fe.mode) || S_ISBLK(fe.mode)) && !fe.full_path.starts_with("/dev/")) {
         AddFlag(ID("HWBD")); 
     }
 
-    if (is_dir && (stx.stx_mode & S_IWOTH) && !(stx.stx_mode & S_ISVTX)) {
+    if (is_dir && (fe.mode & S_IWOTH) && !(fe.mode & S_ISVTX)) {
         AddFlag(ID("SG02")); 
     }
     {
@@ -85,15 +89,15 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
     
 
     if (is_reg) {
-        if (stx.stx_mode & S_ISVTX) {
+        if (fe.mode & S_ISVTX) {
           AddFlag(ID("SU22"));
         }
         
-        bool has_exec = (stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
-        if (has_exec && (stx.stx_mode & (S_IWGRP | S_IWOTH))) {
+        bool has_exec = (fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
+        if (has_exec && (fe.mode & (S_IWGRP | S_IWOTH))) {
           AddFlag(ID("SU08"));
         }
-        kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
+        kls::platform::UniqueFd fd {::open(std::string(fe.full_path).c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
         if (fd) {
             int flags = 0;
             if (::ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) != -1) {
@@ -114,21 +118,21 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
     if (is_suid) {
         AddFlag(ID("SU01"));
 
-        if (stx.stx_mode & S_IWOTH) {
+        if (fe.mode & S_IWOTH) {
           AddFlag(ID("SU02"));
         }
         
-        if (stx.stx_mode & S_IXOTH) {
+        if (fe.mode & S_IXOTH) {
           AddFlag(ID("SU07"));
         }
         if (is_dir) {
           AddFlag(ID("SU10"));
         }
-        if (!(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
+        if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
           AddFlag(ID("SU03"));
         }
         
-        if (!(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (stx.stx_mode & (S_IRUSR | S_IRGRP | S_IROTH))) {
+        if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mode & (S_IRUSR | S_IRGRP | S_IROTH))) {
             AddFlag(ID("SU18"));
         }
 
@@ -138,13 +142,13 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
         if (fe.uid != 0) {
           AddFlag(ID("SU05"));
         }
-        if (!IsKnowPath(full_path)) {
+        if (!IsKnowPath(fe.full_path)) {
           AddFlag(ID("SU04"));
         }
-        if (full_path.starts_with("/tmp") || full_path.starts_with("/var")) {
+        if (fe.full_path.starts_with("/tmp") || fe.full_path.starts_with("/var")) {
           AddFlag(ID("SU20"));
         }
-        if (full_path.starts_with("/home")) {
+        if (fe.full_path.starts_with("/home")) {
           AddFlag(ID("SU21"));
         }
 
@@ -153,12 +157,12 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
             AddFlag(ID("SU12"));
         }
 
-        if (getxattr(std::string(full_path).c_str(), "security.capability", nullptr, 0) > 0) {
+        if (getxattr(std::string(fe.full_path).c_str(), "security.capability", nullptr, 0) > 0) {
             AddFlag(ID("SU19"));
         }
 
         if (is_reg) {
-          kls::platform::UniqueFd fd {::open(std::string(full_path).c_str(), O_RDONLY | O_CLOEXEC)};
+          kls::platform::UniqueFd fd {::open(std::string(fe.full_path).c_str(), O_RDONLY | O_CLOEXEC)};
             if (fd) {
               std::array<char, 4> buffer = {0};
                 ssize_t n = read(fd.get(), buffer.data(), 4);
@@ -181,15 +185,15 @@ void kls::analyzer::analyze_health(kls::audit::AuditEntry &fe, std::string_view 
 
     if (is_sgid) {
         AddFlag(ID("SG01"));
-        if (stx.stx_mode & S_IWOTH) {
+        if (fe.mode & S_IWOTH) {
           AddFlag(ID("SG03"));
         }
-        if (stx.stx_mode & S_IWGRP) {
+        if (fe.mode & S_IWGRP) {
           AddFlag(ID("SG04"));
         }
-        if (!is_dir && !(stx.stx_mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
+        if (!is_dir && !(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
             AddFlag(ID("SU03")); 
         }
     }
-
+  return finding_entry;
 }

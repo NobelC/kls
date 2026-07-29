@@ -1,8 +1,9 @@
 #pragma once
 #include "../audit/audit_entry.hpp"
-#include <string_view>
+#include "../detail/Id.hpp"
 #include <sys/stat.h>
+#include <vector>
 
 namespace kls::analyzer{
-  void analyze_health(kls::audit::AuditEntry &fe, std::string_view full_path, const struct statx &stx,const time_t& TIME_NOW);
+std::vector<ID> analyze_health(const kls::audit::AuditEntry &fe,const time_t& TIME_NOW);
 }

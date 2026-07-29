@@ -1,7 +1,8 @@
 #pragma once
 #include "../audit/audit_entry.hpp"
-#include <string_view>
+#include "kls/detail/Id.hpp"
+#include <vector>
 
 namespace kls::analyzer{
-  void analyze_capability(kls::audit::AuditEntry &fe, std::string_view full_path); 
+std::vector<ID> analyze_capability(const kls::audit::AuditEntry &fe); 
 }
