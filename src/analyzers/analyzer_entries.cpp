@@ -14,13 +14,13 @@ namespace kls::analyzer{
         health_findings.emplace_back(analyze_health(entry,current_time));
       }
     }
-    
+
     if(options.analyze_capabilities){
       scan_output.finding_capabilities.emplace();
       auto& finding_capabilities = *scan_output.finding_capabilities;
       finding_capabilities.reserve(scan_output.entries.size());
       for(const auto& entry: scan_output.entries){
-        finding_capabilities.emplace_back(analyze_capability(entry));  
+        finding_capabilities.emplace_back(analyze_capability(entry));
       }
     }
     return scan_output;

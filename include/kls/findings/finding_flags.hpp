@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 #include "../detail/Id.hpp"
 #include <cstdint>
 #include <vector>
@@ -10,7 +10,7 @@ namespace kls::findings{
   };
 
   struct Finding {
-      const char* message; 
+      const char* message;
       ID id;
       uint8_t level;
       CategoryFindings type_findings;

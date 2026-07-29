@@ -16,11 +16,11 @@
 constexpr static int TOLERANCE_TIME = 1000;
 
 std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,const time_t& TIME_NOW) {
-  std::vector<ID> finding_entry = {};   
+  std::vector<ID> finding_entry = {};
   auto AddFlag = [&](ID id) {
         const kls::findings::Finding* flag = GetHealthFlag(id);
-        if (flag) { 
-          finding_entry.emplace_back(id);      
+        if (flag) {
+          finding_entry.emplace_back(id);
         }
     };
 
@@ -34,17 +34,17 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
       AddFlag(ID("SU13"));
     }
 
-    if (fe.btime > 0 && is_reg && 
+    if (fe.btime > 0 && is_reg &&
         (fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mtime < (fe.btime - TOLERANCE_TIME))) {
-        AddFlag(ID("SU14")); 
+        AddFlag(ID("SU14"));
     }
 
     if ((S_ISCHR(fe.mode) || S_ISBLK(fe.mode)) && !fe.full_path.starts_with("/dev/")) {
-        AddFlag(ID("HWBD")); 
+        AddFlag(ID("HWBD"));
     }
 
     if (is_dir && (fe.mode & S_IWOTH) && !(fe.mode & S_ISVTX)) {
-        AddFlag(ID("SG02")); 
+        AddFlag(ID("SG02"));
     }
     {
       long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX);
@@ -55,7 +55,7 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
       struct passwd pwd;
       struct passwd* result = nullptr;
       std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
-      
+
       while((getpwuid_r(fe.uid,&pwd,buffer.data(),buffer.size(),&result)) == ERANGE){
         buffer.resize(buffer.size() * 2);
       }
@@ -65,14 +65,14 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
       }
 
     }
-    
+
     {
-      
+
       long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX) ;
       if (initial_buffer == -1){
         initial_buffer = 1024;
       }
-      
+
       struct group gp;
       struct group* result = nullptr;
       std::vector<char> buffer(static_cast<unsigned long>(  initial_buffer));
@@ -85,14 +85,14 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
       }
 
     }
-    
-    
+
+
 
     if (is_reg) {
         if (fe.mode & S_ISVTX) {
           AddFlag(ID("SU22"));
         }
-        
+
         bool has_exec = (fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
         if (has_exec && (fe.mode & (S_IWGRP | S_IWOTH))) {
           AddFlag(ID("SU08"));
@@ -121,7 +121,7 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
         if (fe.mode & S_IWOTH) {
           AddFlag(ID("SU02"));
         }
-        
+
         if (fe.mode & S_IXOTH) {
           AddFlag(ID("SU07"));
         }
@@ -131,7 +131,7 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
         if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
           AddFlag(ID("SU03"));
         }
-        
+
         if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mode & (S_IRUSR | S_IRGRP | S_IROTH))) {
             AddFlag(ID("SU18"));
         }
@@ -170,14 +170,14 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
                 if (n >= 2) {
                     bool is_script = (buffer[0] == '#' && buffer[1] == '!');
                     bool is_elf = (n == 4 && buffer[0] == 0x7f && buffer[1] == 'E' && buffer[2] == 'L' && buffer[3] == 'F');
-                    
+
                     if (is_script) {
-                        AddFlag(ID("SU06")); 
+                        AddFlag(ID("SU06"));
                     } else if (!is_elf) {
-                        AddFlag(ID("SU16")); 
+                        AddFlag(ID("SU16"));
                     }
                 } else {
-                    AddFlag(ID("SU16"));                 
+                    AddFlag(ID("SU16"));
                 }
             }
         }
@@ -192,7 +192,7 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,c
           AddFlag(ID("SG04"));
         }
         if (!is_dir && !(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-            AddFlag(ID("SU03")); 
+            AddFlag(ID("SU03"));
         }
     }
   return finding_entry;

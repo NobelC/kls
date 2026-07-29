@@ -4,5 +4,5 @@
 #include <vector>
 
 namespace kls::analyzer{
-std::vector<ID> analyze_capability(const kls::audit::AuditEntry &fe); 
+std::vector<ID> analyze_capability(const kls::audit::AuditEntry &fe);
 }
