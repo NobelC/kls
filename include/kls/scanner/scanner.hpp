@@ -3,6 +3,7 @@
 #include "../result.hpp"
 #include "../audit/audit_entry.hpp"
 #include "../filesystem/file_type.hpp"
+#include "kls/detail/Id.hpp"
 #include <limits>
 #include <optional>
 #include <vector>
@@ -21,6 +22,8 @@ namespace kls::scanner {
   struct ScanOptions {
       bool recursive = false;
       bool include_hidden = false;
+      bool analyze_health = false;
+      bool analyze_capabilities = false;
       SymlinkMode symlink_status = SymlinkMode::ignore;
       std::size_t maximum_depth = std::numeric_limits<std::size_t>::max(); 
   };
@@ -86,13 +89,15 @@ namespace kls::scanner {
   };
 
   struct ScanOutput {
-      std::vector<kls::audit::AuditEntry> entries;
-      std::vector<ScanIssue> issues;
+    std::vector<kls::audit::AuditEntry> entries;
+    std::vector<ScanIssue> issues;
+    std::optional<std::vector<std::vector<ID>>> health_findings;
+    std::optional<std::vector<std::vector<ID>>> finding_capabilities;
   };
 
   using ScanResult = kls::Result<ScanOutput, ScanError>;
   using DiscoveryResult = kls::Result<DiscoveredOutput, ScanError>; 
 
   [[nodiscard]] DiscoveryResult discover_entries(const std::string& root,const ScanOptions& options);
-  [[nodiscard]] ScanResult oschestator(const std::string& root, const ScanOptions& options);
+  [[nodiscard]] ScanResult orchestratorador(const std::string& root, const ScanOptions& options);
 }

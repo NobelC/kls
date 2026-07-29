@@ -50,8 +50,6 @@ set(CORE_SOURCES
     src/CAPABILITIES-register/capabilities-register.cpp
     src/CAPABILITIES-register/print-capabilities.cpp
     src/platform/unique_fd.cpp
-    src/analyzers/health_analyzer.cpp
-    src/analyzers/capability_analyzer.cpp
     src/report/render_report.cpp
     src/platform/identity_resolver.cpp
 )
@@ -81,6 +79,22 @@ target_include_directories(kls_scanner PUBLIC
 
 #==============================================================================
 
+add_library(kls_analysis STATIC
+  src/analyzers/analyzer_entries.cpp
+  src/audit/audit_orchestrator.cpp
+  src/analyzers/health_analyzer.cpp
+  src/analyzers/capability_analyzer.cpp
+)
+
+target_include_directories(kls_analysis PUBLIC
+  ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(kls_analysis PUBLIC
+  kls_scanner
+)
+
+#==============================================================================
 
 # 5. Main Executable
 add_executable(kls src/kls-main.cpp)

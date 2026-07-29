@@ -21,6 +21,8 @@ kls::scanner::ScanOutput collect_metadata(
   ScanOutput output{
       .entries = {},
       .issues = std::move(discovered_output.issues),
+      .health_findings = {},
+      .finding_capabilities = {},
   };
 
   output.entries.reserve(discovered_output.candidates.size());
@@ -174,7 +176,6 @@ kls::scanner::ScanOutput collect_metadata(
       result_entry.extension =
           candidate.name.substr(dot_position);
     }
-
     output.entries.emplace_back(std::move(result_entry));
   }
 
