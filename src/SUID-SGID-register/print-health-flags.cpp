@@ -2,7 +2,7 @@
 #include <iostream>
 
 void PrintHealthFlags(const ID& id) {
-    const kls::findings::HealthFlags* flag = GetHealthFlag(id);
+    const kls::findings::Finding* flag = GetHealthFlag(id);
     
     if (flag == nullptr) {
         std::clog << "[WARN] Health Flag ID non-existent: " << id.get_value() << "\n";
