@@ -5,5 +5,5 @@
 #include <vector>
 
 namespace kls::analyzer{
-std::vector<ID> analyze_health(const kls::audit::AuditEntry &fe,const time_t& TIME_NOW);
+std::vector<ID> analyze_health(const kls::auditor::AuditEntry &fe,const time_t& TIME_NOW);
 }

@@ -60,7 +60,7 @@ kls::scanner::ScanOutput collect_metadata(
     full_path.append(parent_path);
     full_path.append(candidate.name);
 
-    kls::audit::AuditEntry result_entry;
+    kls::auditor::AuditEntry result_entry;
     result_entry.name = candidate.name;
     result_entry.full_path = full_path;
 

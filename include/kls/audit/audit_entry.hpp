@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include "../filesystem/file_type.hpp"
 
-namespace kls::audit {
+namespace kls::auditor {
 
 struct AuditEntry {
   ino_t inode = 0;

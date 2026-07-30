@@ -89,7 +89,7 @@ namespace kls::scanner {
   };
 
   struct ScanOutput {
-    std::vector<kls::audit::AuditEntry> entries;
+    std::vector<kls::auditor::AuditEntry> entries;
     std::vector<ScanIssue> issues;
     std::optional<std::vector<std::vector<ID>>> health_findings;
     std::optional<std::vector<std::vector<ID>>> finding_capabilities;

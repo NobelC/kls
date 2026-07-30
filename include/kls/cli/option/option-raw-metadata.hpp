@@ -31,12 +31,12 @@ enum class OptionCategory : std::uint8_t {
 
 
 struct FilterStruct {
-  std::vector<kls::audit::AuditEntry> &entries;
+  std::vector<kls::auditor::AuditEntry> &entries;
   std::any context; 
 };
 
 struct PresentationStruct {
-  std::vector<kls::audit::AuditEntry> &entries;
+  std::vector<kls::auditor::AuditEntry> &entries;
 };
 
 using FilteringProcess = std::function<void(FilterStruct &)>;
