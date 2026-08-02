@@ -5,28 +5,69 @@ project(kls
     LANGUAGES CXX
 )
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # 1. Build Configuration
-option(ENABLE_SANITIZERS "Enable Address and Undefined Behavior Sanitizers" ON)
-option(ENABLE_COVERAGE "Enable code coverage instrumentation" OFF)
+option(ENABLE_SANITIZERS
+    "Enable Address and Undefined Behavior Sanitizers" OFF)
+option(ENABLE_COVERAGE
+    "Enable code coverage instrumentation" OFF)
+option(ENABLE_TSAN
+    "Enable ThreadSanitizer" OFF)
 
-add_compile_options(
-    -Wall -Wextra -Wpedantic -Wconversion 
-    -Wshadow -g -fno-omit-frame-pointer
-)
-
-if(ENABLE_SANITIZERS AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
-    add_compile_options(-fsanitize=address,undefined)
-    add_link_options(-fsanitize=address,undefined)
-    message(STATUS "Sanitizers enabled")
+if(ENABLE_SANITIZERS AND ENABLE_TSAN)
+    message(FATAL_ERROR
+        "ENABLE_SANITIZERS and ENABLE_TSAN cannot be enabled together")
 endif()
 
-if(ENABLE_COVERAGE AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
-    add_compile_options(--coverage -fprofile-arcs -ftest-coverage)
-    add_link_options(--coverage)
+# Project-specific usage requirements.
+# External dependencies such as GoogleTest do not inherit these options.
+add_library(kls_build_options INTERFACE)
+
+target_compile_features(kls_build_options INTERFACE cxx_std_20)
+
+target_compile_options(kls_build_options INTERFACE
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wall>
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wextra>
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wpedantic>
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wconversion>
+    $<$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>:-Wshadow>
+    $<$<AND:$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>,$<CONFIG:Debug>>:-fno-omit-frame-pointer>
+    $<$<AND:$<COMPILE_LANG_AND_ID:CXX,GNU,Clang>,$<CONFIG:RelWithDebInfo>>:-fno-omit-frame-pointer>
+)
+
+if(ENABLE_SANITIZERS AND
+   (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
+    target_compile_options(kls_build_options INTERFACE
+        -fsanitize=address,undefined
+        -fno-sanitize-recover=all
+    )
+    target_link_options(kls_build_options INTERFACE
+        -fsanitize=address,undefined
+        -fno-sanitize-recover=all
+    )
+    message(STATUS "AddressSanitizer and UBSan enabled")
+elseif(ENABLE_TSAN AND
+       (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
+    target_compile_options(kls_build_options INTERFACE
+        -fsanitize=thread
+    )
+    target_link_options(kls_build_options INTERFACE
+        -fsanitize=thread
+    )
+    message(STATUS "ThreadSanitizer enabled")
+endif()
+
+if(ENABLE_COVERAGE AND
+   (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
+    target_compile_options(kls_build_options INTERFACE
+        --coverage
+        -fprofile-arcs
+        -ftest-coverage
+    )
+    target_link_options(kls_build_options INTERFACE
+        --coverage
+    )
     message(STATUS "Coverage instrumentation enabled")
 endif()
 
@@ -53,6 +94,10 @@ set(CORE_SOURCES
 
 # 3. Core Library
 add_library(kls_core STATIC ${CORE_SOURCES})
+target_link_libraries(kls_core PUBLIC kls_build_options)
+set_target_properties(kls_core PROPERTIES
+    CXX_EXTENSIONS OFF
+)
 target_include_directories(kls_core PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/generated
@@ -66,11 +111,16 @@ configure_file(
 
 # 5. Main Executable
 add_executable(kls src/kls-main.cpp)
+set_target_properties(kls PROPERTIES
+    CXX_EXTENSIONS OFF
+)
 target_link_libraries(kls PRIVATE kls_core)
 
 # 6. Testing Infrastructure
-#enable_testing()
-#add_subdirectory(tests)
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 # 7. Installation
 include(GNUInstallDirs)

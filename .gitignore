@@ -281,3 +281,8 @@ kls-*.tar.gz.asc
 
 # Temporary extraction test directories
 /kls-*/
+/build/
+/compile_commands.json
+/.project-picker-logs/
+/perf.data
+/perf.data.old
