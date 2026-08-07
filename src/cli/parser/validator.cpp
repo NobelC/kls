@@ -3,7 +3,6 @@
 #include <kls/cli/option/option-implementation.hpp>
 #include <kls/cli/option/option-raw-metadata.hpp>
 #include <kls/cli/token/token-raw-metadata.hpp>
-#include <kls/cli/special-option/version-option.hpp.in>
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
@@ -91,20 +90,6 @@ bool EXTENSION_VALIDATED(std::string_view extension_str) {
 
 bool ValidationGroupToken(GroupToken &group_raw) {
   if (!group_raw.is_valid) {
-    return false;
-  }
-
-  bool version = std::ranges::any_of(group_raw.options, [](const Token &t) {
-    return t.name == "--version" || t.name == "-v";
-  });
-  /*
-  bool help_only = std::ranges::any_of(group_raw.options, [](const Token &t) {
-    return t.name == "--help" || t.name == "-h";
-  });
-  */
-
-  if (version) {
-    VERSION_HANDLER();
     return false;
   }
 
