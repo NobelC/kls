@@ -72,6 +72,7 @@ add_library(kls_scanner STATIC
   src/scanner/scanner.cpp
   src/scanner/collect_metadata.cpp
   src/scanner/orchestator.cpp
+  src/scanner/detail/file_type_conversion.cpp  # <--- MOVER AQUÍ
 )
 target_include_directories(kls_scanner PUBLIC
   ${PROJECT_SOURCE_DIR}/include
@@ -98,7 +99,13 @@ target_link_libraries(kls_analysis PUBLIC
 
 # 5. Main Executable
 add_executable(kls src/kls-main.cpp)
-target_link_libraries(kls PRIVATE kls_core)
+# Usamos linker groups para resolver la dependencia circular core <-> analysis
+target_link_libraries(kls PRIVATE 
+    -Wl,--start-group 
+    kls_core 
+    kls_analysis 
+    -Wl,--end-group
+)
 
 # 6. Testing Infrastructure
 enable_testing()

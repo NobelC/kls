@@ -28,7 +28,10 @@ target_include_directories(kls_tests PRIVATE
 
 target_link_libraries(kls_tests 
     PRIVATE
-    kls_core
+    -Wl,--start-group 
+    kls_core 
+    kls_analysis 
+    -Wl,--end-group
     gtest_main 
     gtest
 )
