@@ -1,5 +1,5 @@
-#include "../../include/kls/analyzers/capability_analyzer.hpp"
-#include "../../include/kls/findings/finding_flags.hpp"
+#include "kls/analyzers/capability_analyzer.hpp"
+#include "kls/findings/finding_flags.hpp"
 #include "../CAPABILITIES-register/capabilities-register.hpp"
 #include <array>
 #include <string>
@@ -11,7 +11,7 @@
 #include <linux/xattr.h>
 #include <linux/capability.h>
 
-std::vector<ID> kls::analyzer::analyze_capability(const kls::audit::AuditEntry &fe){
+std::vector<ID> kls::analyzer::analyze_capability(const kls::auditor::AuditEntry &fe){
     std::vector<ID> finding_entry = {};
     auto AddCapability = [&](ID id) {
         const kls::findings::Finding* flag = GetCapabilityFlag(id);

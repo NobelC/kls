@@ -15,7 +15,7 @@
 
 constexpr static int TOLERANCE_TIME = 1000;
 
-std::vector<ID> kls::analyzer::analyze_health(const kls::audit::AuditEntry &fe,const time_t& TIME_NOW) {
+std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe,const time_t& TIME_NOW) {
   std::vector<ID> finding_entry = {};
   auto AddFlag = [&](ID id) {
         const kls::findings::Finding* flag = GetHealthFlag(id);

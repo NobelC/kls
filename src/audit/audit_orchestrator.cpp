@@ -1,4 +1,4 @@
-#include "../../include/kls/audit/audit_orchestrator.hpp"
+#include "kls/audit/audit_orchestrator.hpp"
 #include "kls/analyzers/analyze_entries.hpp"
 #include "kls/result.hpp"
 #include "kls/scanner/scanner.hpp"
@@ -7,7 +7,7 @@
 
 namespace kls::auditor {
   [[nodiscard]] kls::scanner::ScanResult audit_orchestrator(const std::string& root, const kls::scanner::ScanOptions& options){
-    auto scan_result =kls::scanner::orchestratorador(root,options);
+    auto scan_result =kls::scanner::orchestrator(root,options);
 
     if (auto* failure = std::get_if<kls::Failure<kls::scanner::ScanError>>(&scan_result)) {
       return kls::scanner::ScanResult{
