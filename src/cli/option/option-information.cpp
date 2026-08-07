@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <ctime>
 #include <fnmatch.h>
-#include <functional>
+
 #include <string>
 #include <string_view>
 #include <sys/types.h>
@@ -22,11 +22,11 @@
 #include <grp.h>
 #include <string>
 #include "../../../include/kls/audit/audit_entry.hpp"
-#include "../../../include/kls/findings/health_flags.hpp"
+#include "kls/filesystem/file_type.hpp"
 
 namespace {
 
-using AuditEntry = kls::audit::AuditEntry;
+using AuditEntry = kls::auditor::AuditEntry;
 
 std::string FormatTime(const std::time_t &time) {
   std::array<char, 20> buffer;
@@ -237,7 +237,7 @@ void CreatedOptionData() {
   dirs_only.category = OptionCategory::FILTERING;
   dirs_only.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::erase_if(filter_contex.entries,
-                  [](const AuditEntry &e) { return !e.is_directory; });
+                  [](const AuditEntry &e) { return e.type != kls::filesystem::FileType::directory; });
   });
   GeneralOptionLog(dirs_only);
 
@@ -247,7 +247,7 @@ void CreatedOptionData() {
   file_only.category = OptionCategory::FILTERING;
   file_only.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::erase_if(filter_contex.entries, [](const AuditEntry &e) {
-      return (e.is_directory || e.is_symlink);
+      return ((e.type == kls::filesystem::FileType::directory) || (e.type == kls::filesystem::FileType::symlink));
     });
   });
   GeneralOptionLog(file_only);
@@ -415,6 +415,7 @@ GeneralOptionLog(owner_filter);
       });
   GeneralOptionLog(min_links);
 
+/*
   OptionMetaData min_severity;
   min_severity.normalized_name = "--min-severity"; 
   min_severity.data_type = TypeDataReceived::STRING;
@@ -438,7 +439,7 @@ GeneralOptionLog(owner_filter);
           });
       });
   GeneralOptionLog(min_severity);
-
+*/ 
   // --- ORDENAMIENTO (SORTING) ---
 
   OptionMetaData sort;
@@ -467,9 +468,11 @@ GeneralOptionLog(owner_filter);
     } else if (criteria == "type") {
       std::ranges::sort(filter_contex.entries,
                         [](const AuditEntry &a, const AuditEntry &b) {
+                        bool b_directory = (b.type == kls::filesystem::FileType::directory)? true : false;
+                        bool a_directory = (a.type == kls::filesystem::FileType::directory)? true : false;
                           // Directorios primero (true > false)
-                          return std::tie(b.is_directory, a.name) <
-                                 std::tie(a.is_directory, b.name);
+                          return std::tie(b_directory, a.name) <
+                                 std::tie(a_directory, b.name);
                         });
     } else if (criteria == "modified") {
       std::ranges::sort(
@@ -481,16 +484,19 @@ GeneralOptionLog(owner_filter);
                                                   const AuditEntry &b) {
         return std::tie(a.extension, a.name) < std::tie(b.extension, b.name);
       });
-    } else if (criteria == "severity") {
+    } 
+    /*else if (criteria == "severity") {
       std::ranges::sort(filter_contex.entries,std::ranges::greater(),
                         [](const AuditEntry &entry) {
                           auto it = std::ranges::max_element(entry.health, {}, &kls::findings::HealthFlags::level);
                           return it == entry.health.end()? 0 : it->level;
                         });
     }
+    */ 
   });
   GeneralOptionLog(sort);
   
+  /*
   OptionMetaData alerts_first;
   alerts_first.normalized_name = "--alerts-first";
   alerts_first.category = OptionCategory::SORTING;
@@ -502,7 +508,7 @@ GeneralOptionLog(owner_filter);
                       });
   });
   GeneralOptionLog(alerts_first);
-
+*/ 
 
 
   OptionMetaData reverse;
@@ -519,8 +525,10 @@ GeneralOptionLog(owner_filter);
   dirs_first.handler = FilteringProcess([](FilterStruct &filter_contex) {
     std::ranges::sort(filter_contex.entries,
                       [](const AuditEntry &a, const AuditEntry &b) {
-                        return std::tie(b.is_directory, a.name) <
-                               std::tie(a.is_directory, b.name);
+                        bool b_directory = (b.type == kls::filesystem::FileType::directory)? true : false;
+                        bool a_directory = (a.type == kls::filesystem::FileType::directory)? true : false;
+                        return std::tie(b_directory, b.name) <
+                               std::tie(a_directory, a.name);
                       });
   });
   GeneralOptionLog(dirs_first);
@@ -547,6 +555,7 @@ GeneralOptionLog(owner_filter);
   no_health.handler = std::monostate{}; 
   GeneralOptionLog(no_health);
 
+  /*
   OptionMetaData only_alerts;
   only_alerts.normalized_name = "--only-alerts";
   only_alerts.category = OptionCategory::FILTERING;
@@ -556,4 +565,5 @@ GeneralOptionLog(owner_filter);
     });
 });
   GeneralOptionLog(only_alerts);
+  */
 }
