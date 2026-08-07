@@ -1,4 +1,4 @@
-#include "../../include/kls/scanner/scanner.hpp"
+#include "kls/scanner/scanner.hpp"
 #include "kls/result.hpp"
 #include "kls/scanner/collect_metadata.hpp"
 

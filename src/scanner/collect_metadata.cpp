@@ -1,7 +1,7 @@
-#include "../../include/kls/scanner/collect_metadata.hpp"
-#include "../../include/kls/audit/audit_entry.hpp"
-#include "../../include/kls/scanner/scanner.hpp"
-#include "../../include/kls/detail/file_type_conversion.hpp"
+#include "kls/scanner/collect_metadata.hpp"
+#include "kls/audit/audit_entry.hpp"
+#include "kls/scanner/scanner.hpp"
+#include "kls/detail/file_type_conversion.hpp"
 #include <cstddef>
 #include <fcntl.h>
 #include <linux/stat.h>

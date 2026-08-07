@@ -1,6 +1,6 @@
-#include "../../include/kls/scanner/scanner.hpp"
-#include "../../include/kls/filesystem/file_type.hpp"
-#include "../../include/kls/detail/file_type_conversion.hpp"
+#include "kls/scanner/scanner.hpp"
+#include "kls/filesystem/file_type.hpp"
+#include "kls/detail/file_type_conversion.hpp"
 #include <array>
 #include <cerrno>
 #include <cstdint>

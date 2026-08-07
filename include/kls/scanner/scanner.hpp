@@ -99,5 +99,5 @@ namespace kls::scanner {
   using DiscoveryResult = kls::Result<DiscoveredOutput, ScanError>; 
 
   [[nodiscard]] DiscoveryResult discover_entries(const std::string& root,const ScanOptions& options);
-  [[nodiscard]] ScanResult orchestratorador(const std::string& root, const ScanOptions& options);
+  [[nodiscard]] ScanResult orchestrator(const std::string& root, const ScanOptions& options);
 }

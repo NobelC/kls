@@ -1,10 +1,10 @@
-#include "../include/kls/scanner/detail/file_type_conversion.hpp"
+#include "kls/detail/file_type_conversion.hpp"
 #include "kls/filesystem/file_type.hpp"
 #include <dirent.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 
-namespace scanner::detail  {
+namespace detail  {
   [[nodiscard]] kls::filesystem::FileType type_from_mode(const mode_t& mode ) noexcept {
     switch (mode & S_IFMT) {
       case S_IFREG:
