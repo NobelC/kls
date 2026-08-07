@@ -1,6 +1,6 @@
-#include "../../include/kls/report/render_option.hpp"
-#include "../../include/kls/report/render_report.hpp"
-#include "../../include/kls/platform/identity_resolver.hpp"
+#include "kls/report/render_option.hpp"
+#include "kls/report/render_report.hpp"
+#include "kls/platform/identity_resolver.hpp"
 #include "kls/filesystem/file_type.hpp"
 #include "kls/scanner/scanner.hpp"
 
@@ -42,6 +42,7 @@
         return "UNK"; 
       break;
     }
+  return "UNK";
   }
 
 namespace kls::report {

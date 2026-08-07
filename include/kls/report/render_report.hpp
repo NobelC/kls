@@ -6,7 +6,7 @@
 namespace kls::report{
 void render_report(
     std::ostream& output,
-    const kls::scanner::ScanOutput entries,
+    const kls::scanner::ScanOutput& entries,
     const RenderOptions& options
 );
 }
