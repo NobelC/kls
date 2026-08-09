@@ -1,8 +1,0 @@
-#ifndef VERSION_OPTION_HPP
-#define VERSION_OPTION_HPP
-
-#define KRON_VERSION "0.1.1"
-
-void VERSION_HANDLER();
-
-#endif
