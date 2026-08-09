@@ -281,3 +281,6 @@ kls-*.tar.gz.asc
 
 # Temporary extraction test directories
 /kls-*/
+
+generated/
+generated/

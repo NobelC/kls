@@ -43,6 +43,7 @@ add_library(kls_cli STATIC
     src/cli/parser/cli_parser.cpp
     src/cli/validator/cli_validator.cpp
     src/cli/executor/help_formatter.cpp   # <--- NUEVO (debes crearlo)
+    src/cli/adapter/scan_options_adapter.cpp 
 )
 
 target_include_directories(kls_cli PUBLIC 

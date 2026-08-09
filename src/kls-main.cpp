@@ -1,9 +1,14 @@
 // src/kls-main.cpp
+#include "kls/audit/audit_orchestrator.hpp"
+#include "kls/cli/adapter/scan_option_adapter.hpp"
 #include "kls/cli/parser/cli_parser.hpp"
 #include "kls/cli/validator/cli_validator.hpp"
 #include "kls/cli/executor/help_formatter.hpp"
+#include "kls/result.hpp"
+#include "kls/scanner/scanner.hpp"
 #include "special-option/version-option.hpp" // Generado por CMake (KRON_VERSION)
 
+#include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -49,10 +54,49 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    std::cout << "Audit target: " << opts.target_path << "\n";
-    if (opts.recursive) {std::cout << "  Recursive: yes\n";}
-    if (opts.depth)     {std::cout << "  Max depth: " << *opts.depth << "\n";}
-    if (opts.all)       {std::cout << "  Include hidden: yes\n";}
+    //Adapter 
+    auto scan_opts = kls::cli::adapter::to_scan_options(opts);
+    
+    //validate target path 
+    if(!std::filesystem::exists(opts.target_path)){
+      std::cerr << "Error : path does not exist : " << opts.target_path << "\n";
+      return 4;
+    }
+    if(!std::filesystem::is_directory(opts.target_path)){
+      std::cerr << "Error : path is not a is_directory" << opts.target_path << "\n";
+      return 4;
+    }
+    
+    auto scan_result = kls::auditor::audit_orchestrator(opts.target_path,scan_opts);
+    if(auto* failure = std::get_if<kls::Failure<kls::scanner::ScanError>>(&scan_result)){
+      std::cerr << "Audit failed at:" << failure->error.path << "\n";
+      switch(failure->error.code){
+        case kls::scanner::ScanErrorCode::root_not_found:
+          std::cerr << " Path does not exist\n";
+          break;
+        case kls::scanner::ScanErrorCode::root_not_directory:
+          std::cerr << " Path is not a is directory\n";
+          break;
+        case kls::scanner::ScanErrorCode::root_permission_denied:
+          std::cerr << " Permission denied\n";
+          break;
+        case kls::scanner::ScanErrorCode::root_open_failed:
+          std::cerr << " Failed to open path\n";
+          break;
+      }
+      return 4;
+    }
+
+    auto scan_output = std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
+        // 7. Resumen crudo (temporal, antes de integrar renderer)
+    std::cout << "Audit completed:\n";
+    std::cout << "  Entries: " << scan_output.entries.size() << "\n";
+    std::cout << "  Issues:  " << scan_output.issues.size() << "\n";
+
+    // 8. Exit code provisional
+    if (!scan_output.issues.empty()) {
+        return 3;  // Incomplete audit
+    }
 
     return 0;
 }
