@@ -30,18 +30,33 @@ if(ENABLE_COVERAGE AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
     message(STATUS "Coverage instrumentation enabled")
 endif()
 
-# 2. Core Sources
+# 4. Configure Generated Files (se declara ANTES de usarse)
+configure_file(
+    "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
+    "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
+)
+
+# ==============================================================================
+# NUEVA ARQUITECTURA: CLI declarativa (parser + validator + help_formatter)
+# ==============================================================================
+add_library(kls_cli STATIC 
+    src/cli/parser/cli_parser.cpp
+    src/cli/validator/cli_validator.cpp
+    src/cli/executor/help_formatter.cpp   # <--- NUEVO (debes crearlo)
+)
+
+target_include_directories(kls_cli PUBLIC 
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_BINARY_DIR}/generated       # <--- Para version-option.hpp
+)
+
+# ==============================================================================
+# CORE: Plataforma + Reporte + Legacy (deuda técnica)
+# ==============================================================================
+# Los archivos legacy de CLI (option, command, error) YA NO ESTÁN aquí.
+# Los legacy no-CLI (SUID, white-list, CAPABILITIES) se mantienen hasta migrarlos.
 set(CORE_SOURCES
-    src/cli/parser/tokenization.cpp
-    src/cli/parser/parsing.cpp
-    src/cli/parser/validator.cpp
-    src/cli/parser/executor.cpp
-    src/cli/error/error_handler.cpp
-    src/cli/option/option-get-option.cpp
-    src/cli/option/option-information.cpp
-    src/cli/option/special-option/help-handler.cpp
-    src/cli/option/special-option/version-handler.cpp
-    src/cli/command/list.cpp
+    # --- Legacy registers (deuda D1, D2, D4 - se migrarán después) ---
     src/SUID-SGID-register/health-register.cpp
     src/SUID-SGID-register/print-health-flags.cpp
     src/SUID-SGID-register/suid-sgid-register-table.cpp
@@ -49,71 +64,80 @@ set(CORE_SOURCES
     src/CAPABILITIES-register/capabilities-register-log.cpp
     src/CAPABILITIES-register/capabilities-register.cpp
     src/CAPABILITIES-register/print-capabilities.cpp
+    # --- Plataforma y reporte (vivos) ---
     src/platform/unique_fd.cpp
-    src/report/render_report.cpp
     src/platform/identity_resolver.cpp
+    src/report/render_report.cpp
 )
 
-# 3. Core Library
 add_library(kls_core STATIC ${CORE_SOURCES})
 target_include_directories(kls_core PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
     ${PROJECT_BINARY_DIR}/generated
 )
 
-# 4. Configure Generated Files
-configure_file(
-    "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
-    "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
-)
-
-# ====================================================================================
+# ==============================================================================
+# SCANNER
+# ==============================================================================
 add_library(kls_scanner STATIC 
-  src/scanner/scanner.cpp
-  src/scanner/collect_metadata.cpp
-  src/scanner/orchestator.cpp
-  src/scanner/detail/file_type_conversion.cpp  # <--- MOVER AQUÍ
+    src/scanner/scanner.cpp
+    src/scanner/collect_metadata.cpp
+    src/scanner/orchestator.cpp
+    src/scanner/detail/file_type_conversion.cpp
 )
 target_include_directories(kls_scanner PUBLIC
-  ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include
 )
 
-#==============================================================================
-
+# ==============================================================================
+# ANALYSIS
+# ==============================================================================
 add_library(kls_analysis STATIC
-  src/analyzers/analyzer_entries.cpp
-  src/audit/audit_orchestrator.cpp
-  src/analyzers/health_analyzer.cpp
-  src/analyzers/capability_analyzer.cpp
+    src/analyzers/analyzer_entries.cpp
+    src/audit/audit_orchestrator.cpp
+    src/analyzers/health_analyzer.cpp
+    src/analyzers/capability_analyzer.cpp
 )
 
 target_include_directories(kls_analysis PUBLIC
-  ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/include
 )
 
 target_link_libraries(kls_analysis PUBLIC
-  kls_scanner
+    kls_scanner
 )
 
-#==============================================================================
-
-# 5. Main Executable
+# ==============================================================================
+# MAIN EXECUTABLE
+# ==============================================================================
 add_executable(kls src/kls-main.cpp)
-# Usamos linker groups para resolver la dependencia circular core <-> analysis
+
+# El binario enlaza con toda la arquitectura:
+#   - kls_cli       (nueva CLI declarativa)
+#   - kls_core      (plataforma, reporte, legacy registers)
+#   - kls_analysis  (audit_orchestrator + analyzers)
+# Usamos linker groups para tolerar la dependencia circular core <-> analysis
+# (esto desaparecerá cuando extraigamos kls_platform del core).
 target_link_libraries(kls PRIVATE 
+    kls_cli
     -Wl,--start-group 
     kls_core 
     kls_analysis 
     -Wl,--end-group
 )
 
-# 6. Testing Infrastructure
+# ==============================================================================
+# TESTING
+# ==============================================================================
 enable_testing()
 add_subdirectory(tests)
 
-# 7. Installation
+# ==============================================================================
+# INSTALLATION
+# ==============================================================================
 include(GNUInstallDirs)
 install(TARGETS kls RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # Compress the man page before installation to avoid lintian warnings
 find_program(GZIP_EXECUTABLE gzip)
 if(GZIP_EXECUTABLE)
@@ -143,9 +167,9 @@ install(FILES completions/_kls
 install(FILES completions/kls.fish
         DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d)
 
-
-# 8. Packaging
-# --- Packaging with CPack ---
+# ==============================================================================
+# PACKAGING (CPack)
+# ==============================================================================
 set(CPACK_PACKAGE_NAME "kls")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_CONTACT "jeremynobel16@gmail.com")
