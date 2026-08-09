@@ -1,6 +1,6 @@
 #pragma once
 #include "../audit/audit_entry.hpp"
-#include "kls/detail/Id.hpp"
+#include "../detail/Id.hpp"
 #include <vector>
 
 namespace kls::analyzer{

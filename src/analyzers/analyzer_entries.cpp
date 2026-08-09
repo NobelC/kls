@@ -1,6 +1,6 @@
 #include "../../include/kls/analyzers/analyze_entries.hpp"
-#include "kls/analyzers/capability_analyzer.hpp"
-#include "kls/analyzers/health_analyzer.hpp"
+#include "../../include/kls/analyzers/capability_analyzer.hpp"
+#include "../../include/kls/analyzers/health_analyzer.hpp"
 
 
 namespace kls::analyzer{

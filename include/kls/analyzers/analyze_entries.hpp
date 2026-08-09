@@ -1,5 +1,5 @@
 #pragma once
-#include "kls/scanner/scanner.hpp"
+#include "../scanner/scanner.hpp"
 
 
 namespace kls::analyzer{
