@@ -1,0 +1,2 @@
+#pragma once
+#define KRON_VERSION "@PROJECT_VERSION@"
