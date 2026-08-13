@@ -170,7 +170,6 @@ namespace kls::cli::parser{
             };
           }
           opts.target_path = std::string(argv[i]);
-          positional_set = true;
         }
         break;
       }
