@@ -6,7 +6,10 @@
 #include "kls/cli/executor/help_formatter.hpp"
 #include "kls/result.hpp"
 #include "kls/scanner/scanner.hpp"
-#include "special-option/version-option.hpp" // Generado por CMake (KRON_VERSION)
+#include "special-option/version-option.hpp"
+#include "kls/cli/adapter/output_processor.hpp"
+#include "kls/cli/adapter/render_option_adapter.hpp"
+#include "kls/report/render_report.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -88,15 +91,12 @@ int main(int argc, char* argv[]) {
     }
 
     auto scan_output = std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
-        // 7. Resumen crudo (temporal, antes de integrar renderer)
-    std::cout << "Audit completed:\n";
-    std::cout << "  Entries: " << scan_output.entries.size() << "\n";
-    std::cout << "  Issues:  " << scan_output.issues.size() << "\n";
 
-    // 8. Exit code provisional
-    if (!scan_output.issues.empty()) {
-        return 3;  // Incomplete audit
+    kls::cli::adapter::process_output(scan_output, opts);
+    auto render_opts = kls::cli::adapter::to_render_options(opts);
+    kls::report::render_report(std::cout, scan_output, render_opts);
+    if(!scan_output.issues.empty()){
+      return 3;
     }
-
     return 0;
 }

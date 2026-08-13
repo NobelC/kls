@@ -30,34 +30,36 @@ if(ENABLE_COVERAGE AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang"))
     message(STATUS "Coverage instrumentation enabled")
 endif()
 
-# 4. Configure Generated Files (se declara ANTES de usarse)
+# 4. Configure Generated Files 
 configure_file(
     "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
     "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
 )
 
 # ==============================================================================
-# NUEVA ARQUITECTURA: CLI declarativa (parser + validator + help_formatter)
+# NEW ARCHITECTURE: declarative CLI (parser + validator + help_formatter)
 # ==============================================================================
 add_library(kls_cli STATIC 
     src/cli/parser/cli_parser.cpp
     src/cli/validator/cli_validator.cpp
-    src/cli/executor/help_formatter.cpp   # <--- NUEVO (debes crearlo)
+    src/cli/executor/help_formatter.cpp  
     src/cli/adapter/scan_options_adapter.cpp 
+    src/cli/adapter/render_option_adapter.cpp  
+    src/cli/adapter/output_processor.cpp
 )
 
 target_include_directories(kls_cli PUBLIC 
     ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/generated       # <--- Para version-option.hpp
+    ${PROJECT_BINARY_DIR}/generated       
 )
 
 # ==============================================================================
-# CORE: Plataforma + Reporte + Legacy (deuda técnica)
+# CORE: Platform + Report + Legacy (technical debt)
 # ==============================================================================
-# Los archivos legacy de CLI (option, command, error) YA NO ESTÁN aquí.
-# Los legacy no-CLI (SUID, white-list, CAPABILITIES) se mantienen hasta migrarlos.
+# Legacy CLI files (option, command, error) are NO LONGER here.
+# Non-CLI legacy files (SUID, white-list, CAPABILITIES) are kept here until migrated.
 set(CORE_SOURCES
-    # --- Legacy registers (deuda D1, D2, D4 - se migrarán después) ---
+  
     src/SUID-SGID-register/health-register.cpp
     src/SUID-SGID-register/print-health-flags.cpp
     src/SUID-SGID-register/suid-sgid-register-table.cpp
@@ -65,7 +67,7 @@ set(CORE_SOURCES
     src/CAPABILITIES-register/capabilities-register-log.cpp
     src/CAPABILITIES-register/capabilities-register.cpp
     src/CAPABILITIES-register/print-capabilities.cpp
-    # --- Plataforma y reporte (vivos) ---
+
     src/platform/unique_fd.cpp
     src/platform/identity_resolver.cpp
     src/report/render_report.cpp
@@ -113,12 +115,12 @@ target_link_libraries(kls_analysis PUBLIC
 # ==============================================================================
 add_executable(kls src/kls-main.cpp)
 
-# El binario enlaza con toda la arquitectura:
-#   - kls_cli       (nueva CLI declarativa)
-#   - kls_core      (plataforma, reporte, legacy registers)
-#   - kls_analysis  (audit_orchestrator + analyzers)
-# Usamos linker groups para tolerar la dependencia circular core <-> analysis
-# (esto desaparecerá cuando extraigamos kls_platform del core).
+# The binary links against the entire architecture:
+#   - kls_cli        (new declarative CLI)
+#   - kls_core       (platform, report, legacy registers)
+#   - kls_analysis   (audit_orchestrator + analyzers)
+# We use linker groups to tolerate the circular dependency: core <-> analysis.
+# (This will be removed once kls_platform is extracted from core).
 target_link_libraries(kls PRIVATE 
     kls_cli
     -Wl,--start-group 

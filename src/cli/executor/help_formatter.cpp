@@ -61,13 +61,13 @@ namespace kls::cli::executor {
     out << "\033[1;34mARGUMENTS\033[0m\n";
     out << std::format("  {:<20} {}\n\n", "[path]", "Target directory. Defaults to '.'");
 
-    // Agrupar por categoría
+
     std::map<spec::Category, std::vector<const spec::OptionSpec*>> grouped;
     for (const auto& spec : spec::CLI_SPECS) {
         grouped[spec.category].push_back(&spec);
     }
 
-    // Orden de impresión deseado
+
     std::vector<spec::Category> order = {
         spec::Category::SPECIAL,
         spec::Category::GLOBAL,
