@@ -1,7 +1,7 @@
 #include "kls/analyzers/health_analyzer.hpp"
+#include "kls/findings/finding_registry.hpp"
+#include "kls/findings/whitelist.hpp"
 #include "kls/platform/unique_fd.hpp"
-#include "../../src/SUID-SGID-register/health-register.hpp"
-#include "../white-list-routes/white-list-routes.hpp"
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <linux/fs.h>
@@ -12,26 +12,30 @@
 #include <unistd.h>
 #include <array>
 #include <vector>
+#include <cmath>
+
+namespace kls::analyzer {
 
 constexpr static int TOLERANCE_TIME = 1000;
 
-std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe,const time_t& TIME_NOW) {
-  std::vector<ID> finding_entry = {};
-  auto AddFlag = [&](ID id) {
-        const kls::findings::Finding* flag = GetHealthFlag(id);
+std::vector<ID> analyze_health(const kls::auditor::AuditEntry& fe, const time_t& TIME_NOW) {
+    std::vector<ID> finding_entry = {};
+    
+    auto AddFlag = [&](ID id) {
+        const kls::findings::Finding* flag = kls::findings::get_health_flag(id);
         if (flag) {
-          finding_entry.emplace_back(id);
+            finding_entry.emplace_back(id);
         }
     };
 
     const bool is_suid = (fe.mode & S_ISUID) != 0;
     const bool is_sgid = (fe.mode & S_ISGID) != 0;
-    const bool is_reg  = S_ISREG(fe.mode);
-    const bool is_dir  = S_ISDIR(fe.mode);
-    const bool is_lnk  = S_ISLNK(fe.mode);
+    const bool is_reg = S_ISREG(fe.mode);
+    const bool is_dir = S_ISDIR(fe.mode);
+    const bool is_lnk = S_ISLNK(fe.mode);
 
     if (fe.mtime > (TIME_NOW + TOLERANCE_TIME)) {
-      AddFlag(ID("SU13"));
+        AddFlag(ID("SU13"));
     }
 
     if (fe.btime > 0 && is_reg &&
@@ -46,90 +50,87 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe
     if (is_dir && (fe.mode & S_IWOTH) && !(fe.mode & S_ISVTX)) {
         AddFlag(ID("SG02"));
     }
+    
     {
-      long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX);
-      if(initial_buffer == -1){
-        initial_buffer = 1024;
-      }
+        long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX);
+        if (initial_buffer == -1) {
+            initial_buffer = 1024;
+        }
 
-      struct passwd pwd;
-      struct passwd* result = nullptr;
-      std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
+        struct passwd pwd;
+        struct passwd* result = nullptr;
+        std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
 
-      while((getpwuid_r(fe.uid,&pwd,buffer.data(),buffer.size(),&result)) == ERANGE){
-        buffer.resize(buffer.size() * 2);
-      }
+        while ((getpwuid_r(fe.uid, &pwd, buffer.data(), buffer.size(), &result)) == ERANGE) {
+            buffer.resize(buffer.size() * 2);
+        }
 
-      if(result == nullptr){
-        AddFlag(ID{"SU11"});
-      }
-
+        if (result == nullptr) {
+            AddFlag(ID("SU11"));
+        }
     }
 
     {
+        long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX);
+        if (initial_buffer == -1) {
+            initial_buffer = 1024;
+        }
 
-      long initial_buffer = sysconf(_SC_GETGR_R_SIZE_MAX) ;
-      if (initial_buffer == -1){
-        initial_buffer = 1024;
-      }
+        struct group gp;
+        struct group* result = nullptr;
+        std::vector<char> buffer(static_cast<unsigned long>(initial_buffer));
+        while ((getgrgid_r(fe.gid, &gp, buffer.data(), buffer.size(), &result)) == ERANGE) {
+            buffer.resize(buffer.size() * 2);
+        }
 
-      struct group gp;
-      struct group* result = nullptr;
-      std::vector<char> buffer(static_cast<unsigned long>(  initial_buffer));
-      while((getgrgid_r(fe.gid,&gp,buffer.data(),buffer.size(),&result)) == ERANGE){
-        buffer.resize(buffer.size() * 2);
-      }
-
-      if (result == nullptr) {
-        AddFlag(ID("SG05"));
-      }
-
+        if (result == nullptr) {
+            AddFlag(ID("SG05"));
+        }
     }
-
-
 
     if (is_reg) {
         if (fe.mode & S_ISVTX) {
-          AddFlag(ID("SU22"));
+            AddFlag(ID("SU22"));
         }
 
         bool has_exec = (fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) != 0;
         if (has_exec && (fe.mode & (S_IWGRP | S_IWOTH))) {
-          AddFlag(ID("SU08"));
+            AddFlag(ID("SU08"));
         }
-        kls::platform::UniqueFd fd {::open(std::string(fe.full_path).c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
+        
+        kls::platform::UniqueFd fd{::open(std::string(fe.full_path).c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC)};
         if (fd) {
             int flags = 0;
             if (::ioctl(fd.get(), FS_IOC_GETFLAGS, &flags) != -1) {
                 if (flags & FS_IMMUTABLE_FL) {
-                  AddFlag(ID("IMMU"));
+                    AddFlag(ID("IMMU"));
                 }
                 if (flags & FS_APPEND_FL) {
-                  AddFlag(ID("APND"));
+                    AddFlag(ID("APND"));
                 }
             }
         }
     }
 
     if (is_lnk && is_suid) {
-      AddFlag(ID("SU09"));
+        AddFlag(ID("SU09"));
     }
 
     if (is_suid) {
         AddFlag(ID("SU01"));
 
         if (fe.mode & S_IWOTH) {
-          AddFlag(ID("SU02"));
+            AddFlag(ID("SU02"));
         }
 
         if (fe.mode & S_IXOTH) {
-          AddFlag(ID("SU07"));
+            AddFlag(ID("SU07"));
         }
         if (is_dir) {
-          AddFlag(ID("SU10"));
+            AddFlag(ID("SU10"));
         }
         if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
-          AddFlag(ID("SU03"));
+            AddFlag(ID("SU03"));
         }
 
         if (!(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH)) && (fe.mode & (S_IRUSR | S_IRGRP | S_IROTH))) {
@@ -137,19 +138,19 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe
         }
 
         if (!is_dir && fe.nlinks > 1) {
-          AddFlag(ID("SU17"));
+            AddFlag(ID("SU17"));
         }
         if (fe.uid != 0) {
-          AddFlag(ID("SU05"));
+            AddFlag(ID("SU05"));
         }
-        if (!IsKnowPath(fe.full_path)) {
-          AddFlag(ID("SU04"));
+        if (!kls::findings::is_known_path(fe.full_path)) {
+            AddFlag(ID("SU04"));
         }
         if (fe.full_path.starts_with("/tmp") || fe.full_path.starts_with("/var")) {
-          AddFlag(ID("SU20"));
+            AddFlag(ID("SU20"));
         }
         if (fe.full_path.starts_with("/home")) {
-          AddFlag(ID("SU21"));
+            AddFlag(ID("SU21"));
         }
 
         constexpr time_t ONE_DAY_IN_SECONDS = 86400;
@@ -162,9 +163,9 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe
         }
 
         if (is_reg) {
-          kls::platform::UniqueFd fd {::open(std::string(fe.full_path).c_str(), O_RDONLY | O_CLOEXEC)};
+            kls::platform::UniqueFd fd{::open(std::string(fe.full_path).c_str(), O_RDONLY | O_CLOEXEC)};
             if (fd) {
-              std::array<char, 4> buffer = {0};
+                std::array<char, 4> buffer = {0};
                 ssize_t n = read(fd.get(), buffer.data(), 4);
 
                 if (n >= 2) {
@@ -186,14 +187,17 @@ std::vector<ID> kls::analyzer::analyze_health(const kls::auditor::AuditEntry &fe
     if (is_sgid) {
         AddFlag(ID("SG01"));
         if (fe.mode & S_IWOTH) {
-          AddFlag(ID("SG03"));
+            AddFlag(ID("SG03"));
         }
         if (fe.mode & S_IWGRP) {
-          AddFlag(ID("SG04"));
+            AddFlag(ID("SG04"));
         }
         if (!is_dir && !(fe.mode & (S_IXUSR | S_IXGRP | S_IXOTH))) {
             AddFlag(ID("SU03"));
         }
     }
-  return finding_entry;
+    
+    return finding_entry;
 }
+
+} // namespace kls::analyzer
