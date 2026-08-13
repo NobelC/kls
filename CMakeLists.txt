@@ -58,16 +58,7 @@ target_include_directories(kls_cli PUBLIC
 # ==============================================================================
 # Legacy CLI files (option, command, error) are NO LONGER here.
 # Non-CLI legacy files (SUID, white-list, CAPABILITIES) are kept here until migrated.
-set(CORE_SOURCES
-  
-    src/SUID-SGID-register/health-register.cpp
-    src/SUID-SGID-register/print-health-flags.cpp
-    src/SUID-SGID-register/suid-sgid-register-table.cpp
-    src/white-list-routes/white-list-routes.cpp
-    src/CAPABILITIES-register/capabilities-register-log.cpp
-    src/CAPABILITIES-register/capabilities-register.cpp
-    src/CAPABILITIES-register/print-capabilities.cpp
-
+set(CORE_SOURCES  
     src/platform/unique_fd.cpp
     src/platform/identity_resolver.cpp
     src/report/render_report.cpp
