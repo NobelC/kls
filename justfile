@@ -1,84 +1,242 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
+build_root := "build"
+
+# Mostrar recetas disponibles.
 default:
     @just --list
 
+# Comprobar las herramientas del entorno.
 doctor:
-    @printf '%-16s %s\n' 'CMake' "$(cmake --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'Ninja' "$(ninja --version)"
-    @printf '%-16s %s\n' 'GCC' "$(g++ --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'Clang' "$(clang++ --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'ccache' "$(ccache --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'lld' "$(ld.lld --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'GDB' "$(gdb --version | sed -n '1p')"
-    @printf '%-16s %s\n' 'Valgrind' "$(valgrind --version)"
-    @printf '%-16s %s\n' 'perf' "$(perf version)"
-    @printf '%-16s %s\n' 'strace' "$(strace --version | sed -n '1p')"
+    @printf '%-18s %s\n' "CMake" "$(cmake --version 2>/dev/null | head -1 || echo missing)"
+    @printf '%-18s %s\n' "CTest" "$(ctest --version 2>/dev/null | head -1 || echo missing)"
+    @printf '%-18s %s\n' "Ninja" "$(ninja --version 2>/dev/null || echo missing)"
+    @printf '%-18s %s\n' "Compiler" "$(c++ --version 2>/dev/null | head -1 || echo missing)"
+    @printf '%-18s %s\n' "ccache" "$(command -v ccache || echo optional-not-found)"
+    @printf '%-18s %s\n' "mold" "$(command -v mold || echo optional-not-found)"
+    @printf '%-18s %s\n' "lld" "$(command -v ld.lld || echo optional-not-found)"
+    @printf '%-18s %s\n' "clang-format" "$(command -v clang-format || echo optional-not-found)"
+    @printf '%-18s %s\n' "clang-tidy" "$(command -v clang-tidy || echo optional-not-found)"
+    @printf '%-18s %s\n' "perf" "$(command -v perf || echo optional-not-found)"
 
-configure preset="clang-debug":
-    cmake --preset "{{preset}}"
-    ln -sfn "build/{{preset}}/compile_commands.json" compile_commands.json
+# Configurar uno de estos perfiles:
+# debug, release, relwithdebinfo o minsizerel.
+configure profile="debug":
+    #!/usr/bin/env bash
+    set -euo pipefail
 
-build preset="clang-debug": (configure preset)
-    cmake --build --preset "{{preset}}" --parallel
+    case "{{profile}}" in
+        debug)
+            build_type="Debug"
+            ;;
+        release)
+            build_type="Release"
+            ;;
+        relwithdebinfo|profile)
+            build_type="RelWithDebInfo"
+            ;;
+        minsizerel)
+            build_type="MinSizeRel"
+            ;;
+        *)
+            printf 'Perfil desconocido: %s\n' "{{profile}}" >&2
+            printf 'Perfiles: debug, release, relwithdebinfo, minsizerel\n' >&2
+            exit 2
+            ;;
+    esac
 
-run preset="clang-debug" *args: (build preset)
-    "./build/{{preset}}/kls" {{args}}
+    build_dir="{{build_root}}/{{profile}}"
 
-test preset="clang-tests": (build preset)
-    ctest --preset "{{preset}}"
+    cmake \
+        -S . \
+        -B "$build_dir" \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE="$build_type" \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 
-check:
-    cmake --workflow --preset check
+    if [[ -f "$build_dir/compile_commands.json" ]]; then
+        ln -sfn "$build_dir/compile_commands.json" compile_commands.json
+    fi
 
-asan:
-    cmake --workflow --preset sanitize
+# Configurar y compilar.
+build profile="debug":
+    just configure "{{profile}}"
+    cmake --build "{{build_root}}/{{profile}}" --parallel
 
-tsan:
-    cmake --workflow --preset thread
+# Ejecutar los tests registrados con CTest.
+test profile="debug":
+    just build "{{profile}}"
+    ctest \
+        --test-dir "{{build_root}}/{{profile}}" \
+        --output-on-failure \
+        --parallel
 
-release compiler="clang":
-    just build "{{compiler}}-release"
+# Compilar y ejecutar el binario principal kls.
+run profile="debug":
+    #!/usr/bin/env bash
+    set -euo pipefail
 
-profile-build:
-    just build clang-profile
+    just build "{{profile}}"
 
-debug *args: (build "clang-debug")
-    gdb --args ./build/clang-debug/kls {{args}}
+    executable="$(
+        find "{{build_root}}/{{profile}}" \
+            -type f \
+            -name kls \
+            -perm -111 \
+            -print \
+            -quit
+    )"
 
-gdb-tui *args: (build "clang-debug")
-    gdb -tui --args ./build/clang-debug/kls {{args}}
+    if [[ -z "$executable" ]]; then
+        printf 'No se encontró el ejecutable kls en %s\n' \
+            "{{build_root}}/{{profile}}" >&2
 
-valgrind *args: (build "clang-debug")
-    valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all --track-origins=yes ./build/clang-debug/kls {{args}}
+        printf '\nEjecutables encontrados:\n' >&2
 
-perf-stat *args: (build "clang-profile")
-    perf stat ./build/clang-profile/kls {{args}}
+        find "{{build_root}}/{{profile}}" \
+            -type f \
+            -perm -111 \
+            -print >&2
 
-perf-record *args: (build "clang-profile")
-    mkdir -p .project-picker-logs
-    perf record --call-graph dwarf -o .project-picker-logs/perf.data ./build/clang-profile/kls {{args}}
-    perf report -i .project-picker-logs/perf.data
+        exit 1
+    fi
 
-trace *args: (build "clang-debug")
-    mkdir -p .project-picker-logs
-    strace -f -yy -s 256 -o .project-picker-logs/strace.log ./build/clang-debug/kls {{args}}
-    @printf 'Log: %s\n' '.project-picker-logs/strace.log'
+    "$executable"
 
-format-check:
-    find src include tests -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0 | xargs -0 -r clang-format --dry-run --Werror
+# Compilación optimizada.
+release:
+    just build release
 
+# Compilación optimizada con símbolos para profiling.
+profile:
+    just build relwithdebinfo
+
+# AddressSanitizer y UndefinedBehaviorSanitizer.
+sanitize:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    build_dir="{{build_root}}/sanitize"
+    sanitizer_flags="-fsanitize=address,undefined -fno-omit-frame-pointer"
+
+    cmake \
+        -S . \
+        -B "$build_dir" \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_C_FLAGS="$sanitizer_flags" \
+        -DCMAKE_CXX_FLAGS="$sanitizer_flags" \
+        -DCMAKE_EXE_LINKER_FLAGS="$sanitizer_flags" \
+        -DCMAKE_SHARED_LINKER_FLAGS="$sanitizer_flags"
+
+    cmake --build "$build_dir" --parallel
+
+    ctest \
+        --test-dir "$build_dir" \
+        --output-on-failure \
+        --parallel
+
+# Compilación instrumentada con clang-tidy.
+tidy-build:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v clang-tidy >/dev/null || {
+        printf 'clang-tidy no está instalado.\n' >&2
+        exit 1
+    }
+
+    build_dir="{{build_root}}/tidy"
+
+    cmake \
+        -S . \
+        -B "$build_dir" \
+        -G Ninja \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_CXX_CLANG_TIDY=clang-tidy
+
+    cmake --build "$build_dir" --parallel
+
+# Formatear todos los archivos C y C++ del proyecto.
 format:
-    find src include tests -type f \( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \) -print0 | xargs -0 -r clang-format -i
+    #!/usr/bin/env bash
+    set -euo pipefail
 
-tidy: (configure "clang-debug")
-    if command -v run-clang-tidy >/dev/null 2>&1; then run-clang-tidy -p build/clang-debug; else find src tests -type f -name '*.cpp' -print0 | xargs -0 -r clang-tidy -p build/clang-debug; fi
+    command -v clang-format >/dev/null || {
+        printf 'clang-format no está instalado.\n' >&2
+        exit 1
+    }
 
-ccache-stats:
-    ccache --show-stats
+    mapfile -d '' files < <(
+        find include src tests \
+            -type f \
+            \( \
+                -name '*.c' \
+                -o -name '*.cc' \
+                -o -name '*.cpp' \
+                -o -name '*.h' \
+                -o -name '*.hh' \
+                -o -name '*.hpp' \
+            \) \
+            -print0
+    )
 
-targets preset="clang-debug": (configure preset)
-    cmake --build --preset "{{preset}}" --target help
+    if (( ${#files[@]} == 0 )); then
+        printf 'No se encontraron archivos para formatear.\n'
+        exit 0
+    fi
 
+    clang-format -i "${files[@]}"
+
+# Comprobar formato sin modificar archivos.
+format-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    command -v clang-format >/dev/null || {
+        printf 'clang-format no está instalado.\n' >&2
+        exit 1
+    }
+
+    mapfile -d '' files < <(
+        find include src tests \
+            -type f \
+            \( \
+                -name '*.c' \
+                -o -name '*.cc' \
+                -o -name '*.cpp' \
+                -o -name '*.h' \
+                -o -name '*.hh' \
+                -o -name '*.hpp' \
+            \) \
+            -print0
+    )
+
+    if (( ${#files[@]} == 0 )); then
+        printf 'No se encontraron archivos para comprobar.\n'
+        exit 0
+    fi
+
+    clang-format \
+        --dry-run \
+        --Werror \
+        "${files[@]}"
+
+# Validación habitual antes de hacer commit.
+check:
+    just format-check
+    just test debug
+
+# Instalar utilizando el prefijo indicado.
+install prefix="$HOME/.local":
+    just build release
+    cmake \
+        --install "{{build_root}}/release" \
+        --prefix "{{prefix}}"
+
+# Eliminar builds y compile_commands.json.
 clean:
-    @read -r -p 'Eliminar build/, compile_commands.json y logs? [y/N] ' answer; if [[ "$answer" =~ ^[yY]$ ]]; then rm -rf build compile_commands.json .project-picker-logs; else echo 'Cancelado.'; fi
+    rm -rf "{{build_root}}"
+    rm -f compile_commands.json

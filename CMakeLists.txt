@@ -71,28 +71,40 @@ if(ENABLE_COVERAGE AND
     message(STATUS "Coverage instrumentation enabled")
 endif()
 
-# 2. Core Sources
-set(CORE_SOURCES
-    src/core-system/tokenization.cpp
-    src/core-system/parsing.cpp
-    src/core-system/validator.cpp
-    src/core-system/executor.cpp
-    src/error-register-information/error_handler.cpp
-    src/option-register-information/option-get-option.cpp
-    src/option-register-information/option-information.cpp
-    src/option-register-information/special-option/help-handler.cpp
-    src/option-register-information/special-option/version-handler.cpp
-    src/command-register-information/list.cpp
-    src/SUID-SGID-register/health-register.cpp
-    src/SUID-SGID-register/print-health-flags.cpp
-    src/SUID-SGID-register/suid-sgid-register-table.cpp
-    src/white-list-routes/white-list-routes.cpp
-    src/CAPABILITIES-register/capabilities-register-log.cpp
-    src/CAPABILITIES-register/capabilities-register.cpp
-    src/CAPABILITIES-register/print-capabilities.cpp
+# 4. Configure Generated Files 
+configure_file(
+    "${PROJECT_SOURCE_DIR}/include/kls/cli/special-option/version-option.hpp.in"
+    "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
 )
 
-# 3. Core Library
+# ==============================================================================
+# NEW ARCHITECTURE: declarative CLI (parser + validator + help_formatter)
+# ==============================================================================
+add_library(kls_cli STATIC 
+    src/cli/parser/cli_parser.cpp
+    src/cli/validator/cli_validator.cpp
+    src/cli/executor/help_formatter.cpp  
+    src/cli/adapter/scan_options_adapter.cpp 
+    src/cli/adapter/render_option_adapter.cpp  
+    src/cli/adapter/output_processor.cpp
+)
+
+target_include_directories(kls_cli PUBLIC 
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_BINARY_DIR}/generated       
+)
+
+# ==============================================================================
+# CORE: Platform + Report + Legacy (technical debt)
+# ==============================================================================
+# Legacy CLI files (option, command, error) are NO LONGER here.
+# Non-CLI legacy files (SUID, white-list, CAPABILITIES) are kept here until migrated.
+set(CORE_SOURCES  
+    src/platform/unique_fd.cpp
+    src/platform/identity_resolver.cpp
+    src/report/render_report.cpp
+)
+
 add_library(kls_core STATIC ${CORE_SOURCES})
 target_link_libraries(kls_core PUBLIC kls_build_options)
 set_target_properties(kls_core PROPERTIES
@@ -103,28 +115,68 @@ target_include_directories(kls_core PUBLIC
     ${PROJECT_BINARY_DIR}/generated
 )
 
-# 4. Configure Generated Files
-configure_file(
-    "${PROJECT_SOURCE_DIR}/include/special-option/version-option.hpp.in"
-    "${PROJECT_BINARY_DIR}/generated/special-option/version-option.hpp"
+# ==============================================================================
+# SCANNER
+# ==============================================================================
+add_library(kls_scanner STATIC 
+    src/scanner/scanner.cpp
+    src/scanner/collect_metadata.cpp
+    src/scanner/orchestator.cpp
+    src/scanner/detail/file_type_conversion.cpp
+)
+target_include_directories(kls_scanner PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
 )
 
-# 5. Main Executable
+# ==============================================================================
+# ANALYSIS
+# ==============================================================================
+add_library(kls_analysis STATIC
+    src/analyzers/analyzer_entries.cpp
+    src/audit/audit_orchestrator.cpp
+    src/analyzers/health_analyzer.cpp
+    src/analyzers/capability_analyzer.cpp
+)
+
+target_include_directories(kls_analysis PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+target_link_libraries(kls_analysis PUBLIC
+    kls_scanner
+)
+
+# ==============================================================================
+# MAIN EXECUTABLE
+# ==============================================================================
 add_executable(kls src/kls-main.cpp)
-set_target_properties(kls PROPERTIES
-    CXX_EXTENSIONS OFF
+
+# The binary links against the entire architecture:
+#   - kls_cli        (new declarative CLI)
+#   - kls_core       (platform, report, legacy registers)
+#   - kls_analysis   (audit_orchestrator + analyzers)
+# We use linker groups to tolerate the circular dependency: core <-> analysis.
+# (This will be removed once kls_platform is extracted from core).
+target_link_libraries(kls PRIVATE 
+    kls_cli
+    -Wl,--start-group 
+    kls_core 
+    kls_analysis 
+    -Wl,--end-group
 )
-target_link_libraries(kls PRIVATE kls_core)
 
-# 6. Testing Infrastructure
-include(CTest)
-if(BUILD_TESTING)
-    add_subdirectory(tests)
-endif()
+# ==============================================================================
+# TESTING
+# ==============================================================================
+enable_testing()
+add_subdirectory(tests)
 
-# 7. Installation
+# ==============================================================================
+# INSTALLATION
+# ==============================================================================
 include(GNUInstallDirs)
 install(TARGETS kls RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # Compress the man page before installation to avoid lintian warnings
 find_program(GZIP_EXECUTABLE gzip)
 if(GZIP_EXECUTABLE)
@@ -154,9 +206,9 @@ install(FILES completions/_kls
 install(FILES completions/kls.fish
         DESTINATION ${CMAKE_INSTALL_DATADIR}/fish/vendor_completions.d)
 
-
-# 8. Packaging
-# --- Packaging with CPack ---
+# ==============================================================================
+# PACKAGING (CPack)
+# ==============================================================================
 set(CPACK_PACKAGE_NAME "kls")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_CONTACT "jeremynobel16@gmail.com")

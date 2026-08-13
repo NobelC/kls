@@ -1,8 +1,0 @@
-#ifndef VERSION_OPTION_HPP
-#define VERSION_OPTION_HPP
-
-#define KRON_VERSION "@PROJECT_VERSION@"
-
-void VERSION_HANDLER();
-
-#endif
