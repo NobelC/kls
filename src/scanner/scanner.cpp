@@ -22,7 +22,7 @@ namespace kls::scanner {
   struct DirDelete{
     void operator()(DIR* dir) const noexcept{
       if(dir){
-        closedir(dir);
+        ::closedir(dir);
       }
     }
   };
