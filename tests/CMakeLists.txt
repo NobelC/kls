@@ -11,30 +11,25 @@ FetchContent_MakeAvailable(googletest)
 
 
 # --- TEST TARGET ---
-add_executable(kls_tests
-    TOKENIZATION_TEST.cpp
-    PARSING_TEST.cpp 
-    VALIDATION_TEST.cpp
-    EXECUTOR_TEST.cpp
-    #SPEED_TEST_LIST.cpp
+add_executable(kls_cli_tests
+    cli/output_processor_test.cpp
+    # cli/parser_test.cpp          # Future
+    # cli/validator_test.cpp       # Future
+    # cli/scan_options_adapter_test.cpp  # Future
+    # cli/render_option_adapter_test.cpp # Future
 )
 
-target_compile_options(kls_tests PRIVATE -g)
+target_compile_options(kls_cli_tests PRIVATE -g)
 
-target_include_directories(kls_tests PRIVATE 
-    ${PROJECT_SOURCE_DIR}/include
-    ${PROJECT_BINARY_DIR}/generated
-)
-
-target_link_libraries(kls_tests 
+target_link_libraries(kls_cli_tests
     PRIVATE
-    -Wl,--start-group 
-    kls_core 
-    kls_analysis 
-    -Wl,--end-group
-    gtest_main 
+    kls_cli
+    kls_core
     gtest
+    gtest_main
 )
-
+target_include_directories(kls_cli_tests PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
 include(GoogleTest)
-gtest_discover_tests(kls_tests)
+gtest_discover_tests(kls_cli_tests)

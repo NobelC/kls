@@ -1,5 +1,0 @@
-if(EXISTS "/home/nobelc/Projects/kls/tests/kls_tests_e3b0c442_tests.cmake")
-  include("/home/nobelc/Projects/kls/tests/kls_tests_e3b0c442_tests.cmake")
-else()
-  add_test(kls_tests_NOT_BUILT kls_tests_NOT_BUILT)
-endif()
