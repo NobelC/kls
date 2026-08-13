@@ -1,7 +1,7 @@
 #pragma once 
-#include "../model/parser_options.hpp"
-#include "../model/cli_error.hpp"
-#include "../../result.hpp"
+#include "kls/cli/model/parser_options.hpp"
+#include "kls/cli/model/cli_error.hpp"
+#include "kls/result.hpp"
 #include <string_view>
 #include <span>
 

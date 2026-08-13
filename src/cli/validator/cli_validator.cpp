@@ -1,9 +1,9 @@
-#include "../../../include/kls/cli/validator/cli_validator.hpp"
-#include "../../../include/kls/cli/model/cli_error.hpp"
-#include "../../../include/kls/cli/model/parser_options.hpp"
-#include "../../../include/kls/cli/spec/cli_spec.hpp"
-#include "../../../include/kls/cli/spec/option_spec.hpp"
-#include "../../../include/kls/result.hpp"
+#include "kls/cli/validator/cli_validator.hpp"
+#include "kls/cli/model/cli_error.hpp"
+#include "kls/cli/model/parser_options.hpp"
+#include "kls/cli/spec/cli_spec.hpp"
+#include "kls/cli/spec/option_spec.hpp"
+#include "kls/result.hpp"
 #include <string>
 #include <string_view>
 

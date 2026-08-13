@@ -1,5 +1,5 @@
-#include "../../include/kls/analyzers/health_analyzer.hpp"
-#include "../../include/kls/platform/unique_fd.hpp"
+#include "kls/analyzers/health_analyzer.hpp"
+#include "kls/platform/unique_fd.hpp"
 #include "../../src/SUID-SGID-register/health-register.hpp"
 #include "../white-list-routes/white-list-routes.hpp"
 #include <fcntl.h>

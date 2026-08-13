@@ -1,5 +1,5 @@
 #pragma once
-#include "../report/render_option.hpp"
+#include "kls/report/render_option.hpp"
 #include "kls/scanner/scanner.hpp"
 #include <ostream>
 

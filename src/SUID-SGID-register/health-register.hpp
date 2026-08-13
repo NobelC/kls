@@ -1,7 +1,7 @@
 #pragma once
 #include <sys/types.h>
-#include "../../include/kls/findings/finding_flags.hpp"
-#include "../../include/kls/detail/Id.hpp"
+#include "kls/findings/finding_flags.hpp"
+#include "kls/detail/Id.hpp"
  
 
 void GeneralHealthFlagsLog(const kls::findings::Finding& health);

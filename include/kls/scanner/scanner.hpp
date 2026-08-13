@@ -1,15 +1,15 @@
 #pragma once
 #include <cstdint>
-#include "../result.hpp"
-#include "../audit/audit_entry.hpp"
-#include "../filesystem/file_type.hpp"
+#include "kls/result.hpp"
+#include "kls/audit/audit_entry.hpp"
+#include "kls/filesystem/file_type.hpp"
 #include <limits>
 #include <optional>
 #include <vector>
 #include <system_error>
 #include <string>
 #include <cstddef>
-#include "../detail/Id.hpp"
+#include "kls/detail/Id.hpp"
 
 namespace kls::scanner {
   
@@ -87,12 +87,16 @@ namespace kls::scanner {
     std::vector<std::string>target_symlink;
     std::vector<ScanIssue> issues;    
   };
-
-  struct ScanOutput {
-    std::vector<kls::auditor::AuditEntry> entries;
-    std::vector<ScanIssue> issues;
+  
+  struct AuditItem{
+    kls::auditor::AuditEntry entry;
     std::optional<std::vector<std::vector<ID>>> health_findings;
     std::optional<std::vector<std::vector<ID>>> finding_capabilities;
+  };
+
+  struct ScanOutput {
+    std::vector<AuditItem> items;
+    std::vector<ScanIssue> issues;
   };
 
   using ScanResult = kls::Result<ScanOutput, ScanError>;

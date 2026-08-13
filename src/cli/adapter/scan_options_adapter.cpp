@@ -1,4 +1,4 @@
-#include "../../../include/kls/cli/adapter/scan_option_adapter.hpp"
+#include "kls/cli/adapter/scan_option_adapter.hpp"
 #include <cstddef>
 #include <limits>
 

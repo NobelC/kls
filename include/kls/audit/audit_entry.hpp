@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 #include <sys/types.h>
-#include "../filesystem/file_type.hpp"
+#include "kls/filesystem/file_type.hpp"
 
 namespace kls::auditor {
 
