@@ -1,28 +1,45 @@
-#include "../../include/kls/analyzers/analyze_entries.hpp"
-#include "../../include/kls/analyzers/capability_analyzer.hpp"
-#include "../../include/kls/analyzers/health_analyzer.hpp"
+#include "kls/analyzers/analyze_entries.hpp"
+#include "kls/analyzers/capability_analyzer.hpp"
+#include "kls/analyzers/health_analyzer.hpp"
 
 
 namespace kls::analyzer{
-  [[nodiscard]] kls::scanner::ScanOutput analyze_entries(kls::scanner::ScanOutput scan_output,const kls::scanner::ScanOptions& options){
-    if(options.analyze_health){
-      scan_output.health_findings.emplace();
-      auto& health_findings = *scan_output.health_findings;
-      health_findings.reserve(scan_output.entries.size());
-      const time_t current_time = std::time(nullptr);
-      for(const auto& entry : scan_output.entries){
-        health_findings.emplace_back(analyze_health(entry,current_time));
-      }
+
+kls::scanner::ScanOutput analyze_entries(
+    kls::scanner::ScanOutput scan_output,
+    const kls::scanner::ScanOptions& options
+) {
+    const auto TIME_NOW = time(nullptr);
+
+    if (options.analyze_health) {
+      
+        for (auto& item : scan_output.items) {
+            auto health_result = analyze_health(item.entry, TIME_NOW);
+            if (!health_result.empty()) {
+                // Inicializar el optional si es la primera vez
+                if (!item.health_findings.has_value()) {
+                    item.health_findings.emplace();
+                }
+                item.health_findings->push_back(std::move(health_result));
+            }
+        }
     }
 
-    if(options.analyze_capabilities){
-      scan_output.finding_capabilities.emplace();
-      auto& finding_capabilities = *scan_output.finding_capabilities;
-      finding_capabilities.reserve(scan_output.entries.size());
-      for(const auto& entry: scan_output.entries){
-        finding_capabilities.emplace_back(analyze_capability(entry));
-      }
+    if (options.analyze_capabilities) {
+      
+        for (auto& item : scan_output.items) {
+            auto cap_result = analyze_capability(item.entry);
+            if (!cap_result.empty()) {
+      
+                if (!item.finding_capabilities.has_value()) {
+                    item.finding_capabilities.emplace();
+                }
+                item.finding_capabilities->push_back(std::move(cap_result));
+            }
+        }
     }
+
     return scan_output;
-  }
+}
+
 }

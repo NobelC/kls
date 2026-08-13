@@ -51,7 +51,7 @@ namespace kls::report {
 
     kls::platform::IdentityResolver Identity;
     const auto maximum_name_width = option_render.maximum_name_width;
-    if (entries.entries.empty()) {
+    if (entries.items.empty()) {
       return;
     }
 
@@ -70,8 +70,8 @@ namespace kls::report {
   }
   output << std::string(120, '-') << "\n";
 
-  for (size_t i = 0 ; i < entries.entries.size() ; i++) {
-    auto& actual_entry = entries.entries[i];
+  for (size_t i = 0 ; i < entries.items.size() ; i++) {
+    auto& actual_entry = entries.items[i].entry;
     // 1. Perms (Mode)
     std::string perms;
     perms += (actual_entry.mode & S_IRUSR) ? "r" : "-";

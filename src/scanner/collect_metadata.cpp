@@ -4,12 +4,12 @@
 #include "kls/detail/file_type_conversion.hpp"
 #include <cstddef>
 #include <fcntl.h>
+#include <linux/limits.h>
 #include <linux/stat.h>
 #include <optional>
 #include <string>
 #include <sys/stat.h>
 #include <system_error>
-#include <utility>
 #include <cerrno>
 
 namespace kls::scanner {
@@ -18,14 +18,9 @@ namespace kls::scanner {
 kls::scanner::ScanOutput collect_metadata(
     kls::scanner::DiscoveredOutput discovered_output
 ) {
-  ScanOutput output{
-      .entries = {},
-      .issues = std::move(discovered_output.issues),
-      .health_findings = {},
-      .finding_capabilities = {},
-  };
 
-  output.entries.reserve(discovered_output.candidates.size());
+  ScanOutput final_output;
+  final_output.items.reserve(discovered_output.candidates.size());
 
   constexpr unsigned int requested_mask =
       STATX_BASIC_STATS |
@@ -40,10 +35,11 @@ kls::scanner::ScanOutput collect_metadata(
       STATX_UID |
       STATX_GID |
       STATX_MTIME;
-
+  std::string full_path;
+  full_path.reserve(PATH_MAX);
   for (const auto& candidate : discovered_output.candidates) {
     if (candidate.parent >= discovered_output.directory_paths.size()) {
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::invalid_discovery_reference,
           .path = candidate.name,
           .system_error = {},
@@ -52,12 +48,13 @@ kls::scanner::ScanOutput collect_metadata(
       continue;
     }
 
-    const std::string& parent_path =
-        discovered_output.directory_paths[candidate.parent];
-
-    std::string full_path;
-    full_path.reserve(parent_path.size() + candidate.name.size());
+    const std::string& parent_path = discovered_output.directory_paths[candidate.parent];
+    
+    full_path.clear();
     full_path.append(parent_path);
+    if(!parent_path.empty() && !parent_path.ends_with('/')){
+      full_path.push_back('/');
+    }
     full_path.append(candidate.name);
 
     kls::auditor::AuditEntry result_entry;
@@ -69,7 +66,7 @@ kls::scanner::ScanOutput collect_metadata(
           *candidate.target_symlink_id;
 
       if (target_id >= discovered_output.target_symlink.size()) {
-        output.issues.emplace_back(ScanIssue{
+        final_output.issues.emplace_back(ScanIssue{
             .code = ScanIssueCode::invalid_discovery_reference,
             .path = full_path,
             .system_error = {},
@@ -97,7 +94,7 @@ kls::scanner::ScanOutput collect_metadata(
     if (statx_result == -1) {
       const int statx_error = errno;
 
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = statx_error == ENOENT
               ? ScanIssueCode::entry_disappeared
               : ScanIssueCode::metadata_failed,
@@ -112,7 +109,7 @@ kls::scanner::ScanOutput collect_metadata(
     }
 
     if ((stx.stx_mask & required_mask) != required_mask) {
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::metadata_incomplete,
           .path = full_path,
           .system_error = {},
@@ -123,7 +120,7 @@ kls::scanner::ScanOutput collect_metadata(
 
     if (candidate.discovered_inode &&
         *candidate.discovered_inode != stx.stx_ino) {
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::entry_identity_changed,
           .path = full_path,
           .system_error = {},
@@ -135,7 +132,7 @@ kls::scanner::ScanOutput collect_metadata(
     const auto metadata_type = detail::type_from_mode(stx.stx_mode);
 
     if (metadata_type == filesystem::FileType::unknown) {
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::metadata_incomplete,
           .path = full_path,
           .system_error = {},
@@ -145,7 +142,7 @@ kls::scanner::ScanOutput collect_metadata(
     }
 
     if (candidate.discovered_type != metadata_type) {
-      output.issues.emplace_back(ScanIssue{
+      final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::entry_type_changed,
           .path = full_path,
           .system_error = {},
@@ -176,10 +173,14 @@ kls::scanner::ScanOutput collect_metadata(
       result_entry.extension =
           candidate.name.substr(dot_position);
     }
-    output.entries.emplace_back(std::move(result_entry));
-  }
+    final_output.items.push_back({
+      .entry = std::move(result_entry),
+      .health_findings = {},
+      .finding_capabilities = {},
+    });
+  } 
 
-  return output;
+  return final_output;
 }
 
 }
