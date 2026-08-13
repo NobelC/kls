@@ -109,7 +109,7 @@ void apply_dirs_first(scanner::ScanOutput& output) {
     std::ranges::stable_sort(output.items, [](const auto& a, const auto& b) {
         bool a_dir = (a.entry.type == kls::filesystem::FileType::directory);
         bool b_dir = (b.entry.type == kls::filesystem::FileType::directory);
-        if (a_dir != b_dir) {return a_dir > b_dir;}
+        if (a_dir != b_dir) {return a_dir;}
         return a.entry.name < b.entry.name;
     });
 }
@@ -118,7 +118,7 @@ void apply_findings_first(scanner::ScanOutput& output) {
     std::ranges::stable_sort(output.items, [](const auto& a, const auto& b) {
         bool a_has = has_findings(a);
         bool b_has = has_findings(b);
-        if (a_has != b_has) {return a_has > b_has;}
+        if (a_has != b_has) {return a_has;}
         return a.entry.name < b.entry.name;
     });
 }
