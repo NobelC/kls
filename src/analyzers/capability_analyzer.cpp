@@ -28,13 +28,10 @@ std::vector<ID> analyze_capability(const kls::auditor::AuditEntry& fe) {
     std::memset(buffer.data(), 0, sizeof(buffer));
     ssize_t size = getxattr(std::string(fe.full_path).c_str(), XATTR_NAME_CAPS, buffer.data(), sizeof(buffer));
 
-    if (size <= 0) {
-        return finding_entry;
+    if(size <= 0){
+      return finding_entry;
     }
-
-    if (size > 0) {
-        AddCapability(ID("CA01"));
-    }
+    AddCapability(ID("CA01"));
     
     auto* cap_struct = reinterpret_cast<struct vfs_cap_data*>(buffer.data());
     uint32_t magic_etc = cap_struct->magic_etc;
