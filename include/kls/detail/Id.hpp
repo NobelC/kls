@@ -31,7 +31,7 @@ public:
         return val == other.val;
     }
   
-    [[nodiscard]] std::string to_string() const {
+    [[maybe_unused]] [[nodiscard]] std::string to_string() const {
         const std::array<char, 4> buffer = {
             static_cast<char>((val >> 24) & 0xFF),
             static_cast<char>((val >> 16) & 0xFF),

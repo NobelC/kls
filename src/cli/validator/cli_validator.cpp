@@ -4,6 +4,7 @@
 #include "kls/cli/spec/cli_spec.hpp"
 #include "kls/cli/spec/option_spec.hpp"
 #include "kls/result.hpp"
+#include <algorithm>
 #include <string>
 #include <string_view>
 
@@ -50,22 +51,20 @@ namespace kls::cli::validator {
     for (const auto& spec: spec::CLI_SPECS){
       if(!is_present(opts,spec.name)) {continue;}
       //conflicts 
-      for(const auto& conflict : spec.conflicts){
-        if(is_present(opts,conflict)){
-          return kls::Failure<model::CliError>{
-            make_error(model::ErrorCode::CONFLICTING_OPTIONS,spec.name,conflict,"Options conflicts with another option")
-          };
-        }
+      auto conflict_it = std::ranges::find_if(spec.conflicts, [&opts](const auto& conflict){
+        return is_present(opts,conflict);
+      });
+      if(conflict_it != spec.conflicts.end()){
+        return kls::Failure<model::CliError>{make_error(model::ErrorCode::CONFLICTING_OPTIONS,spec.name, *conflict_it, "Options conflicts with another option")};
       }
 
-      //Requeriments
-      for(const auto& req : spec.requirements){
-        if(!is_present(opts,req)){
-          return kls::Failure<model::CliError>{
-            make_error(model::ErrorCode::MISSING_REQUIRED_OPTION,spec.name,req,"Options requires with another option")
-          };
-        }
-      }
+      //Requirements
+      auto requirement_it = std::ranges::find_if(spec.requirements, [&opts](const auto& requirements){
+        return is_present(opts,requirements);
+      });
+      return kls::Failure<model::CliError>{
+        make_error(model::ErrorCode::MISSING_REQUIRED_OPTION,spec.name,*requirement_it,"Options requires with another option")
+      };
     }
     return kls::Success<model::ParsedOptions>{opts};
   }

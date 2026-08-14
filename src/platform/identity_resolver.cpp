@@ -34,11 +34,6 @@ namespace kls::platform{
       return owners_[uid];
     }
 
-    if(result_owner){
-      owners_[uid] = result_owner->pw_name;
-      return owners_[uid];
-    }
-
     owners_[uid] = "UNKNOWN";
     return owners_[uid];
 
@@ -73,10 +68,6 @@ namespace kls::platform{
         return groups_[gid];
     }
 
-    if(result_group){
-      groups_[gid] = result_group->gr_name;
-      return groups_[gid];
-    }
     groups_[gid] = "UNKNOWN";
     return groups_[gid];
 

@@ -16,7 +16,7 @@ namespace kls::scanner {
 
 [[nodiscard]]
 kls::scanner::ScanOutput collect_metadata(
-    kls::scanner::DiscoveredOutput discovered_output
+    kls::scanner::DiscoveredOutput& discovered_output
 ) {
 
   ScanOutput final_output;
