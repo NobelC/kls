@@ -33,10 +33,11 @@ namespace kls::scanner {
       root_not_directory,
       root_permission_denied,
       root_open_failed,
+      unknown,
   };
 
   struct ScanError{
-      ScanErrorCode code;
+      ScanErrorCode code = ScanErrorCode::unknown;
       std::string path;
       std::error_code system_error;
   };
@@ -65,7 +66,7 @@ namespace kls::scanner {
   };
 
   struct ScanIssue {
-      ScanIssueCode code;
+      ScanIssueCode code = ScanIssueCode::directory_open_failed;
       std::string path;
       std::error_code system_error;
   };
@@ -74,7 +75,7 @@ namespace kls::scanner {
 
   struct CandidateEntry{
     std::string name;
-    IDDirectory parent;
+    IDDirectory parent = 0;
     std::optional<std::uint64_t> discovered_inode = std::nullopt;
     filesystem::FileType discovered_type = filesystem::FileType::unknown;
     std::optional<std::size_t> target_symlink_id = std::nullopt; 

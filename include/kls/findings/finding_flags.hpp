@@ -10,10 +10,10 @@ namespace kls::findings{
   };
 
   struct Finding {
-      const char* message;
+      const char* message = nullptr;
       ID id;
-      uint8_t level;
-      CategoryFindings type_findings;
+      uint8_t level = 0;
+      CategoryFindings type_findings = CategoryFindings::health;
   };
 
   struct FindingCollection{
