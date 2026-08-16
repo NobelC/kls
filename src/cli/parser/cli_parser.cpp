@@ -8,6 +8,7 @@
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -153,107 +154,114 @@ namespace kls::cli::parser{
 
       return {};
     }
-  }
 
-  [[nodiscard]] kls::cli::parser::ParseResult parse(kls::cli::parser::ArgvView argv){
-    model::ParsedOptions opts;
-    bool positional_set = false;
-    for(size_t i = 0  ; i < argv.size(); ++i){
-      std::string_view arg = argv[i];
-      if(arg == "--"){
-        ++i;
-        if(i< argv.size()){
-          if(positional_set){
-            return kls::Failure<model::CliError>{
-              make_error(model::ErrorCode::INVALID_POSITIONAL,"","Multiple positional arguments not suported")
-            };
-          }
-          opts.target_path = std::string(argv[i]);
+    [[nodiscard]] std::optional<model::CliError> handle_double_dash(ArgvView argv, size_t& i, bool& positional_set, model::ParsedOptions& opts){
+      i++;
+      if(i < argv.size()){
+        if(positional_set){
+          return make_error(model::ErrorCode::INVALID_POSITIONAL,"","Multiple positional arguments not supported");
         }
-        break;
+        opts.target_path = std::string(argv[i]);
+        positional_set = true;
       }
-      //Long option
-      if(arg.starts_with("--")){
-        std::string_view name;
-        std::string_view value;
-        bool has_inline_value = false;
-
-        auto eq = arg.find('=');
-        if(eq != std::string_view::npos){
-          name = arg.substr(0,eq);
-          value = arg.substr(eq + 1);
-          has_inline_value = true;
+      return std::nullopt;
+    }
+    
+    [[nodiscard]]std::optional<model::CliError> handle_long_option(std::string_view arg, ArgvView argv, size_t& i, model::ParsedOptions& opts){
+      const auto eq = arg.find('=');
+      const bool has_inline_value = (eq != std::string_view::npos);
+      const std::string_view name = has_inline_value ? arg.substr(0, eq) : arg;
+      const std::string_view inline_value = has_inline_value ? arg.substr(eq + 1) : std::string_view{};
+      
+      const auto* spec = find_spec(name);
+      if(!spec){
+        return make_error(model::ErrorCode::UNKNOWN_OPTION,name,"Unknown option");
+      } 
+      
+      if(spec->value_type == spec::ValueType::NONE){
+        if(has_inline_value){
+          return make_error(model::ErrorCode::INVALID_VALUE,name,"Option does not accept a value", "", inline_value);
         }
-        else{
-          name = arg;
-        }
-
-        const auto* spec = find_spec(name);
-        if(!spec){
-          return kls::Failure<model::CliError>{
-            make_error(model::ErrorCode::UNKNOWN_OPTION,name,"Unknown option")
-          };
-        }
-        if(spec->value_type == spec::ValueType::NONE){
-          if(has_inline_value){
-            return kls::Failure<model::CliError>{
-              make_error(model::ErrorCode::INVALID_VALUE, name,"Option does not accept a value", "", value)
-            };
-          }
-          set_flag(opts, name);
-        }
-        else{
-          if(!has_inline_value){
-            ++i;
-            if(i >= argv.size()){
-              return kls::Failure<model::CliError>{
-                make_error(model::ErrorCode::MISSING_VALUE,name,"Option requires a value")
-              };
-            }
-            value = argv[i];
-          }
-          auto err = validate_value(*spec,value);
-          if(!err.message.empty()) {return kls::Failure<model::CliError>{err};}
-          err = set_value(opts,*spec, value);
-          if(!err.message.empty()) {return kls::Failure<model::CliError>{err};}
-        }
+        set_flag(opts,name);
+        return std::nullopt;
       }
-      else if(arg.starts_with("-") && arg.size() > 1){
-        const auto* spec = find_spec(arg);
-        if(!spec){
-          return kls::Failure<model::CliError>{
-            make_error(model::ErrorCode::UNKNOWN_OPTION,arg,"Unknown option")
-          };
-        }
-        
-        if(spec->value_type == spec::ValueType::NONE){
-          set_flag(opts,arg);
-        }
-        else{
-          ++i;
-          if( i >= argv.size()){
-            return kls::Failure<model::CliError>{
-              make_error(model::ErrorCode::MISSING_VALUE,arg,"Option requires a value")
-            };
-          }
-          std::string_view value = argv[i];
-          auto err = validate_value(*spec,value);
-          if(!err.message.empty()) {return kls::Failure<model::CliError>{err};}
-          err = set_value(opts,*spec,value);
-          if(!err.message.empty()) {return kls::Failure<model::CliError>{err};}
-        }
+      
+      std::string_view value;
+      if(has_inline_value){
+        value = inline_value;
       }
       else{
-        if(positional_set){
-          return kls::Failure<model::CliError>{
-            make_error(model::ErrorCode::INVALID_POSITIONAL,arg,"Multiple positional arguments not supported")
-          };
+        ++i;
+        if(i>= argv.size()){
+          return make_error(model::ErrorCode::MISSING_VALUE,name,"Option requires a value");
+        }
+        value = argv[i];
+      }
+      if(auto err = validate_value(*spec,value); !err.message.empty()){
+        return err;
+      }
+      return set_value(opts,*spec,value);
+    }
+
+    [[nodiscard]] std::optional<model::CliError> handle_short_option(std::string_view arg, ArgvView argv, size_t& i, model::ParsedOptions& opts){
+      const auto* spec = find_spec(arg);
+      if(!spec){
+        return make_error(model::ErrorCode::UNKNOWN_OPTION,arg,"Unknown option");
+      }
+      if(spec->value_type == spec::ValueType::NONE){
+        set_flag(opts,arg);
+        return std::nullopt;
+      }
+      ++i;
+      if(i>=argv.size()){
+        return make_error(model::ErrorCode::MISSING_VALUE, arg, "Option requires a value");
+      }
+      const std::string_view value = argv[i];
+      if (auto err = validate_value(*spec, value); !err.message.empty()) {
+        return err;
+      }
+      return set_value(opts, *spec, value);
+    }
+
+  }
+
+  [[nodiscard]] kls::cli::parser::ParseResult parse(kls::cli::parser::ArgvView argv) {
+    model::ParsedOptions opts;
+    bool positional_set = false;
+
+    for (size_t i = 0; i < argv.size(); ++i) {
+        const std::string_view arg = argv[i];
+
+        if (arg == "--") {
+            if (auto err = handle_double_dash(argv, i, positional_set, opts); err) {
+                return kls::Failure<model::CliError>{*err};
+            }
+            break;
+        }
+        
+        if (arg.starts_with("--")) {
+            if (auto err = handle_long_option(arg, argv, i, opts); err) {
+                return kls::Failure<model::CliError>{*err};
+            }
+            continue;
+        }
+        
+        if (arg.starts_with("-") && arg.size() > 1) {
+            if (auto err = handle_short_option(arg, argv, i, opts); err) {
+                return kls::Failure<model::CliError>{*err};
+            }
+            continue;
+        }
+
+        if (positional_set) {
+            return kls::Failure<model::CliError>{
+                make_error(model::ErrorCode::INVALID_POSITIONAL, arg, "Multiple positional arguments not supported")
+            };
         }
         opts.target_path = std::string(arg);
         positional_set = true;
-      }
-
     }
+
     return kls::Success<model::ParsedOptions>{opts};
   }
 }
