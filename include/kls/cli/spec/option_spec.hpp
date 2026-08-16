@@ -25,8 +25,8 @@ namespace kls::cli::spec {
     std::string_view name;
     std::string_view alias;
     std::string_view description;
-    Category category;
-    ValueType value_type;
+    Category category = Category::GLOBAL;
+    ValueType value_type = ValueType::NONE;
     std::span<const std::string_view> conflicts;
     std::span<const std::string_view> requirements;
   };

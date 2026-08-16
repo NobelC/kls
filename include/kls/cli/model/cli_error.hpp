@@ -15,7 +15,7 @@ enum class ErrorCode : uint8_t {
 };
 
 struct CliError {
-    ErrorCode code;
+    ErrorCode code = ErrorCode::UNKNOWN_OPTION;
     std::string option_name;      
     std::string conflicting_with; 
     std::string expected_value;  

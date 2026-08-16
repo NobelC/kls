@@ -69,11 +69,10 @@ namespace kls::cli::parser{
     bool is_valid_integer(std::string_view v) {
       if (v.empty()) {return false;}
       size_t start = (v[0] == '-') ? 1 : 0;
-      if (start >= v.size()) {return false;}
-        for (size_t i = start; i < v.size(); ++i) {
-          if (!std::isdigit(static_cast<unsigned char>(v[i]))) {return false;}
-        }
-        {return true;}
+      if(start >= v.size()){return false;}
+      return std::ranges::all_of(v.substr(start), [](unsigned char c){
+        return std::isdigit(c);
+      });
     } 
 
     model::CliError make_error(model::ErrorCode code, std::string_view option,

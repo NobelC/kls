@@ -31,7 +31,7 @@ namespace kls::scanner {
 
   struct DirectoryRecord{
     std::string path;
-    std::size_t depth;
+    std::size_t depth = 0;
   };
 
   kls::scanner::DiscoveryResult discover_entries(const std::string& root, const ScanOptions& options){

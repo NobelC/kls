@@ -10,7 +10,7 @@ constexpr std::array<std::string_view, 1> verbose_conflicts = {"--quiet"};
 constexpr std::array<std::string_view, 1> depth_requirements = {"--recursive"};
 struct AliasIndex{
   std::string_view alias;
-  size_t spec_index;
+  size_t spec_index = 0;
 };
 
 constexpr size_t NUM_OPTIONS = 19;
