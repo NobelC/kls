@@ -29,15 +29,5 @@ public:
 
     constexpr bool operator==(const ID& other) const noexcept {
         return val == other.val;
-    }
-  
-    [[maybe_unused]] [[nodiscard]] std::string to_string() const {
-        const std::array<char, 4> buffer = {
-            static_cast<char>((val >> 24) & 0xFF),
-            static_cast<char>((val >> 16) & 0xFF),
-            static_cast<char>((val >> 8)  & 0xFF),
-            static_cast<char>(val         & 0xFF)
-        };
-        return {buffer.data(), 4}; 
-    }
+    } 
 };
