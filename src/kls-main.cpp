@@ -86,6 +86,8 @@ int main(int argc, char* argv[]) {
         case kls::scanner::ScanErrorCode::root_open_failed:
           std::cerr << " Failed to open path\n";
           break;
+        case kls::scanner::ScanErrorCode::unknown:
+          std::cerr << " Error unknown, good bless\n";
       }
       return 4;
     }
