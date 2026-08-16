@@ -32,8 +32,6 @@ namespace kls::cli::validator {
       if (name == "--no-header")                  {return opts.no_header;}
       return false;
     }
-    
-    
 
     model::CliError make_error(model::ErrorCode code, std::string_view option, std::string_view conflicting, std::string_view message){
       return model::CliError{
@@ -46,27 +44,31 @@ namespace kls::cli::validator {
       };
     }
   }
-  
+
   ValidationResult validate(const model::ParsedOptions& opts){
     for (const auto& spec: spec::CLI_SPECS){
       if(!is_present(opts,spec.name)) {continue;}
-      //conflicts 
+
+      // Conflicts
       auto conflict_it = std::ranges::find_if(spec.conflicts, [&opts](const auto& conflict){
-        return is_present(opts,conflict);
+        return is_present(opts, conflict);
       });
       if(conflict_it != spec.conflicts.end()){
-        return kls::Failure<model::CliError>{make_error(model::ErrorCode::CONFLICTING_OPTIONS,spec.name, *conflict_it, "Options conflicts with another option")};
+        return kls::Failure<model::CliError>{
+          make_error(model::ErrorCode::CONFLICTING_OPTIONS, spec.name, *conflict_it, "Options conflicts with another option")
+        };
       }
 
-      //Requirements
-      auto requirement_it = std::ranges::find_if(spec.requirements, [&opts](const auto& requirements){
-        return is_present(opts,requirements);
+      // Requirements
+      auto requirement_it = std::ranges::find_if(spec.requirements, [&opts](const auto& req){
+        return !is_present(opts, req);
       });
-      return kls::Failure<model::CliError>{
-        make_error(model::ErrorCode::MISSING_REQUIRED_OPTION,spec.name,*requirement_it,"Options requires with another option")
-      };
+      if(requirement_it != spec.requirements.end()){
+        return kls::Failure<model::CliError>{
+          make_error(model::ErrorCode::MISSING_REQUIRED_OPTION, spec.name, *requirement_it, "Option requires another option")
+        };
+      }
     }
     return kls::Success<model::ParsedOptions>{opts};
   }
-
 }
