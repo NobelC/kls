@@ -13,10 +13,7 @@ FetchContent_MakeAvailable(googletest)
 # --- TEST TARGET ---
 add_executable(kls_cli_tests
     cli/output_processor_test.cpp
-    # cli/parser_test.cpp          # Future
-    # cli/validator_test.cpp       # Future
-    # cli/scan_options_adapter_test.cpp  # Future
-    # cli/render_option_adapter_test.cpp # Future
+    cli/min_severity_test.cpp
 )
 
 target_compile_options(kls_cli_tests PRIVATE -g)

@@ -10,6 +10,8 @@
 #include "kls/cli/adapter/output_processor.hpp"
 #include "kls/cli/adapter/render_option_adapter.hpp"
 #include "kls/report/render_report.hpp"
+#include "kls/cli/adapter/severity_count.hpp"
+#include "kls/detail/parse_severity.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -93,12 +95,20 @@ int main(int argc, char* argv[]) {
     }
 
     auto scan_output = std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
-
+    auto severity_counts = kls::cli::adapter::count_findings_by_severity(scan_output);
     kls::cli::adapter::process_output(scan_output, opts);
     auto render_opts = kls::cli::adapter::to_render_options(opts);
     kls::report::render_report(std::cout, scan_output, render_opts);
     if(!scan_output.issues.empty()){
       return 3;
     }
+    
+    if(opts.fail_on.has_value()){
+      auto threshold = parser_severity(*opts.fail_on);
+      if(threshold.has_value() && severity_counts.at_or_above(*threshold)){
+        return 5;
+      }
+    }
+
     return 0;
 }

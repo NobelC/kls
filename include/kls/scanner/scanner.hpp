@@ -91,8 +91,7 @@ namespace kls::scanner {
   
   struct AuditItem{
     kls::auditor::AuditEntry entry;
-    std::optional<std::vector<std::vector<ID>>> health_findings;
-    std::optional<std::vector<std::vector<ID>>> finding_capabilities;
+    std::vector<ID> findings;
   };
 
   struct ScanOutput {

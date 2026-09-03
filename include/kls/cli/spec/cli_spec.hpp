@@ -13,7 +13,7 @@ struct AliasIndex{
   size_t spec_index = 0;
 };
 
-constexpr size_t NUM_OPTIONS = 19;
+constexpr size_t NUM_OPTIONS = 20;
 
 template<size_t N>
 struct CliTables{
@@ -145,6 +145,16 @@ consteval auto build_cli_spec(){
         .conflicts = {},
         .requirements = {},
     },
+
+    OptionSpec{
+      .name = "--fail-on",
+      .alias = "",
+      .description = "Exit with code 5 if findings at or above severity exist",
+      .category = Category::FILTERING,
+      .value_type = ValueType::STRING,
+      .conflicts = {},
+      .requirements = {},
+    } ,
     
     // SORTING
     OptionSpec{

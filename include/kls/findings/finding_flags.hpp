@@ -8,11 +8,20 @@ namespace kls::findings{
     health,
     capabilities,
   };
+  
+  enum class SeverityFindings : uint8_t{
+    None = 0,
+    Low = 1,
+    MedLow = 2,
+    Med = 3,
+    High = 4,
+    Crit = 5,
+  };
 
   struct Finding {
       const char* message = nullptr;
       ID id;
-      uint8_t level = 0;
+      SeverityFindings level = SeverityFindings::None;
       CategoryFindings type_findings = CategoryFindings::health;
   };
 

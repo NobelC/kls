@@ -22,7 +22,7 @@ std::vector<ID> analyze_health(const kls::auditor::AuditEntry& fe, const time_t&
     std::vector<ID> finding_entry = {};
     
     auto AddFlag = [&](ID id) {
-        const kls::findings::Finding* flag = kls::findings::get_health_flag(id);
+        const kls::findings::Finding* flag = kls::findings::get_finding(id);
         if (flag) {
             finding_entry.emplace_back(id);
         }

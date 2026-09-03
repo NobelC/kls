@@ -3,11 +3,13 @@
 #include "kls/cli/model/parser_options.hpp"
 #include "kls/cli/spec/cli_spec.hpp"
 #include "kls/cli/spec/option_spec.hpp"
+#include "kls/detail/parse_severity.hpp"
 #include "kls/result.hpp"
 #include <algorithm>
 #include <array>
 #include <cctype>
 #include <charconv>
+#include <execution>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -135,7 +137,7 @@ namespace kls::cli::parser{
       else if (name == "--no-header")                      {opts.no_header = true;}
     }
 
-    model::CliError set_value(model::ParsedOptions& opts,const spec::OptionSpec& spec,std::string_view value) {
+    [[nodiscard]] std::optional<model::CliError> set_value(model::ParsedOptions& opts,const spec::OptionSpec& spec,std::string_view value) {
       std::string val(value);
 
       if (spec.name == "--depth" || spec.alias == "-d") {
@@ -149,10 +151,35 @@ namespace kls::cli::parser{
       else if (spec.name == "--filter")          {opts.filter = val;}
       else if (spec.name == "--modified-before") {opts.modified_before = val;}
       else if (spec.name == "--modified-after")  {opts.modified_after = val;}
-      else if (spec.name == "--min-severity")    {opts.min_severity = val;}
+      else if (spec.name == "--min-severity"){    
+        if(!parser_severity(value).has_value()){
+          return model::CliError{
+            .code = model::ErrorCode::INVALID_VALUE,
+            .option_name = std::string(spec.name),
+            .conflicting_with = {},
+            .expected_value = "Low | Med | MedLow | High | Crit",
+            .actual_value = std::string(value),
+            .message = "Invalid severity level",
+          };
+        }
+        opts.min_severity = val;
+      }
+      else if (spec.name == "--fail-on") {
+        if(!parser_severity(value).has_value()){
+          return model::CliError{
+            .code = model::ErrorCode::INVALID_VALUE,
+            .option_name = std::string(spec.name),
+            .conflicting_with = {},
+            .expected_value = "Low | Med | MedLow | High | Crit",
+            .actual_value = std::string(value),
+            .message = "Invalid severity level for --fail-on ",
+          };
+        }
+        opts.fail_on = value;
+      }
       else if (spec.name == "--sort")            {opts.sort = val;}
 
-      return {};
+      return std::nullopt;
     }
 
     [[nodiscard]] std::optional<model::CliError> handle_double_dash(ArgvView argv, size_t& i, bool& positional_set, model::ParsedOptions& opts){

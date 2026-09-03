@@ -87,6 +87,8 @@ add_library(kls_cli STATIC
     src/cli/adapter/scan_options_adapter.cpp 
     src/cli/adapter/render_option_adapter.cpp  
     src/cli/adapter/output_processor.cpp
+    src/cli/spec/cli_spec_definition.cpp
+    src/cli/adapter/severity_count.cpp
 )
 
 target_include_directories(kls_cli PUBLIC 

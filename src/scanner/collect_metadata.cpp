@@ -175,8 +175,7 @@ kls::scanner::ScanOutput collect_metadata(
     }
     final_output.items.push_back({
       .entry = std::move(result_entry),
-      .health_findings = {},
-      .finding_capabilities = {},
+      .findings = {},
     });
   } 
 

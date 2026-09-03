@@ -25,6 +25,7 @@ struct ParsedOptions {
     std::optional<std::string> modified_after;
     bool only_findings = false;
     std::optional<std::string> min_severity;
+    std::optional<std::string> fail_on;
     
     // Sorting
     std::optional<std::string> sort;

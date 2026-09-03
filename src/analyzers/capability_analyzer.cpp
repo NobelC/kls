@@ -18,7 +18,7 @@ std::vector<ID> analyze_capability(const kls::auditor::AuditEntry& fe) {
     std::vector<ID> finding_entry = {};
     
     auto AddCapability = [&](ID id) {
-        const kls::findings::Finding* flag = kls::findings::get_capability_flag(id);
+        const kls::findings::Finding* flag = kls::findings::get_finding(id);
         if (flag) {
             finding_entry.emplace_back(id);
         }
