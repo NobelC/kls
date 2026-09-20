@@ -17,9 +17,9 @@ struct transparent_hash {
   }
 };
 
-struct transparent_equal{
+struct transparent_equal {
   using is_transparent = void;
-  bool operator()(std::string_view opt , std::string_view its) const {
+  bool operator()(std::string_view opt, std::string_view its) const {
     return opt == its;
   }
 };

@@ -3,6 +3,7 @@
 #include "kls/detail/Id.hpp"
 #include <vector>
 
-namespace kls::analyzer{
-std::vector<ID> analyze_capability(const kls::auditor::AuditEntry &fe);
+namespace kls::analyzer {
+std::vector<kls::detail::ID>
+analyze_capability(const kls::auditor::AuditEntry &fe);
 }

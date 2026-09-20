@@ -1,11 +1,11 @@
 #pragma once
 
+#include "kls/filesystem/file_type.hpp"
 #include <cstdint>
 #include <ctime>
 #include <optional>
 #include <string>
 #include <sys/types.h>
-#include "kls/filesystem/file_type.hpp"
 
 namespace kls::auditor {
 
@@ -19,7 +19,6 @@ struct AuditEntry {
 
   filesystem::FileType type = filesystem::FileType::unknown;
 
-
   time_t mtime = 0;
   time_t btime = 0;
 
@@ -29,4 +28,4 @@ struct AuditEntry {
   std::string extension;
 };
 
-}
+} // namespace kls::auditor

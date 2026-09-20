@@ -3,7 +3,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-namespace detail  {
-  [[nodiscard]] kls::filesystem::FileType type_from_mode(const mode_t& if_type ) noexcept;
-  [[nodiscard]] kls::filesystem::FileType type_from_dirent(const unsigned char& dt_type ) noexcept;
-}
+namespace kls::detail {
+[[nodiscard]] kls::filesystem::FileType
+type_from_mode(const mode_t &if_type) noexcept;
+[[nodiscard]] kls::filesystem::FileType
+type_from_dirent(const unsigned char &dt_type) noexcept;
+} // namespace kls::detail

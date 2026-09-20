@@ -4,10 +4,11 @@
 #include <string_view>
 #include <sys/stat.h>
 
-template <uint8_t... Shifts> std::string extract_bit(uint32_t data) {
+namespace kls::detail {
+template <uint8_t... Shifts> constexpr std::string extract_bit(uint32_t data) {
   std::string result;
   result.reserve(sizeof...(Shifts));
-  (result.push_back(static_cast<char>(data >> Shifts) & 0xFF), ...);
+  (result.push_back(static_cast<char>((data >> Shifts) & 0xFF)), ...);
   return result;
 }
 
@@ -42,3 +43,4 @@ public:
     return val == other.val;
   }
 };
+} // namespace kls::detail

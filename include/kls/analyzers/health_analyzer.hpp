@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <vector>
 
-namespace kls::analyzer{
-std::vector<ID> analyze_health(const kls::auditor::AuditEntry &fe,const time_t& TIME_NOW);
+namespace kls::analyzer {
+std::vector<kls::detail::ID> analyze_health(const kls::auditor::AuditEntry &fe,
+                                            const time_t &TIME_NOW);
 }
