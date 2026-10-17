@@ -162,7 +162,7 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       if (temp_name == "." || temp_name == "..") {
         continue;
       }
-      if (!options.include_hidden && temp_name.starts_with(".")) {
+      if (!options.include_hidden && temp_name.starts_with('.')) {
         continue;
       }
 
@@ -204,7 +204,6 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       if (type_correct == filesystem::FileType::directory &&
           options.recursive && actual_entry.depth < options.maximum_depth) {
         full_path.append("/");
-        temp_name.append("/");
         pending_directories.push({
             .path = full_path,
             .depth = actual_entry.depth + 1,
