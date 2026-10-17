@@ -10,32 +10,48 @@
 #include <optional>
 #include <ranges>
 #include <string>
+#include <system_error>
 #include <tuple>
 #include <vector>
+#include <charconv>
 
 namespace definition_options {
 namespace {
 bool parse_date(const std::string &date_str, std::time_t &out) {
-  if (date_str.size() != 10) {
+  const char* first = date_str.data();
+  const char* last = date_str.data() + date_str.size();
+  
+  int year,month,day = 0;
+
+
+  auto [ptr1, ec1] = std::from_chars(first,last,year);
+  if(ec1 != std::errc{} || ptr1 == last || *ptr1 != '-'){
+    return false;
+  }
+  
+  auto [ptr2,ec2] = std::from_chars(ptr1 + 1,last,month);
+  if(ec2 != std::errc{} || ptr2 == last || *ptr2 != '-'){
+    return false;
+  }
+  
+  auto [ptr3,ec3] = std::from_chars(ptr2 + 1,last,day);
+  if(ec3 != std::errc{} || ptr3 == last || *ptr3 != '-'){
     return false;
   }
 
-  int year, month, day;
-  if (std::sscanf(date_str.c_str(), "%d-%d-%d", &year, &month, &day) != 3) {
-    return false;
-  }
-
-  struct std::tm tm{};
+  std::tm tm = {};
   tm.tm_year = year - 1900;
-  tm.tm_mon = month - 1;
+  tm.tm_mon = month -1;
   tm.tm_mday = day;
-  tm.tm_hour = 0;
-  tm.tm_min = 0;
-  tm.tm_sec = 0;
   tm.tm_isdst = -1;
 
-  out = std::mktime(&tm);
-  return out != static_cast<std::time_t>(-1);
+  std::time_t time = std::mktime(&tm);
+  if (time == static_cast<std::time_t>(-1)){
+    return false;
+  }
+  out = time;
+  return true;
+
 }
 
 bool has_findings(const kls::scanner::AuditItem &item) {
@@ -143,12 +159,11 @@ void apply_findings_first(kls::scanner::ScanOutput &output) {
       return a_has;
     }
 
-    return get_max_severity(a.findings) < get_max_severity(b.findings);
+    return get_max_severity(a.findings) > get_max_severity(b.findings);
   });
 }
 
-void apply_min_severity(kls::scanner::ScanOutput &output,
-                        const std::string &min_severity) {
+void apply_min_severity(kls::scanner::ScanOutput &output, const std::string &min_severity) {
   const auto min_level = parser_severity(min_severity);
   if (!min_level.has_value()) {
     return;
