@@ -9,7 +9,6 @@
 #include <array>
 #include <cctype>
 #include <charconv>
-#include <execution>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -29,7 +28,7 @@ namespace kls::cli::parser{
           return &(*it);
         }
       }
-      else if(name_or_alias.starts_with("-")){
+      else if(name_or_alias.starts_with('-')){
         auto it = std::ranges::lower_bound(
           spec::CLI_ALIAS,
           name_or_alias,
@@ -122,8 +121,8 @@ namespace kls::cli::parser{
     }
     
     void set_flag(model::ParsedOptions& opts, std::string_view name) {
-      if      (name == "--help" || name == "-H")           {opts.help = true;}
-      else if (name == "--version" || name == "-V")        {opts.version = true;}
+      if      (name == "--help" || name == "-h")           {opts.help = true;}
+      else if (name == "--version" || name == "-v")        {opts.version = true;}
       else if (name == "--no-color")                       {opts.no_color = true;}
       else if (name == "--quiet" || name == "-q")          {opts.quiet = true;}
       else if (name == "--verbose")                        {opts.verbose = true;}
@@ -273,7 +272,7 @@ namespace kls::cli::parser{
             continue;
         }
         
-        if (arg.starts_with("-") && arg.size() > 1) {
+        if (arg.starts_with('-') && arg.size() > 1) {
             if (auto err = handle_short_option(arg, argv, i, opts); err) {
                 return kls::Failure<model::CliError>{*err};
             }
