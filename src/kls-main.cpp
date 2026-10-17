@@ -12,8 +12,6 @@
 #include "kls/result.hpp"
 #include "kls/scanner/scanner.hpp"
 #include "special-option/version-option.hpp"
-
-#include <filesystem>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -68,16 +66,6 @@ int main(int argc, char *argv[]) {
   // Adapter
   auto scan_opts = kls::cli::adapter::to_scan_options(opts);
 
-  // validate target path
-  if (!std::filesystem::exists(opts.target_path)) {
-    std::cerr << "Error : path does not exist : " << opts.target_path << "\n";
-    return 4;
-  }
-  if (!std::filesystem::is_directory(opts.target_path)) {
-    std::cerr << "Error : path is not a is_directory" << opts.target_path
-              << "\n";
-    return 4;
-  }
 
   auto scan_result =
       kls::auditor::audit_orchestrator(opts.target_path, scan_opts);
@@ -103,22 +91,21 @@ int main(int argc, char *argv[]) {
     return 4;
   }
 
-  auto scan_output =
-      std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
-  auto severity_counts =
-      kls::cli::adapter::count_findings_by_severity(scan_output);
+  auto scan_output = std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
+  auto severity_counts = kls::cli::adapter::count_findings_by_severity(scan_output);
   kls::cli::adapter::process_output(scan_output, opts);
   auto render_opts = kls::cli::adapter::to_render_options(opts);
   kls::report::render_report(std::cout, scan_output, render_opts);
-  if (!scan_output.issues.empty()) {
-    return 3;
-  }
 
   if (opts.fail_on.has_value()) {
     auto threshold = parser_severity(*opts.fail_on);
     if (threshold.has_value() && severity_counts.at_or_above(*threshold)) {
       return 5;
     }
+  }
+
+    if (!scan_output.issues.empty()) {
+    return 3;
   }
 
   return 0;
