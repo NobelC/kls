@@ -26,7 +26,7 @@ consteval auto build_cli_spec(){
     // SPECIAL
     OptionSpec{
         .name = "--help",
-        .alias = "-H",
+        .alias = "-h",
         .description = "Show help message and exit",
         .category = Category::SPECIAL,
         .value_type = ValueType::NONE,
@@ -35,7 +35,7 @@ consteval auto build_cli_spec(){
     },
     OptionSpec{
         .name = "--version",
-        .alias = "-V",
+        .alias = "-v",
         .description = "Display version information and exit",
         .category = Category::SPECIAL,
         .value_type = ValueType::NONE,

@@ -284,3 +284,5 @@ kls-*.tar.gz.asc
 
 generated/
 generated/
+
+repomix-output.xml

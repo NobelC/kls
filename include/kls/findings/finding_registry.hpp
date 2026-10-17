@@ -9,7 +9,7 @@
 namespace kls::findings {
 
 // ============================================================================
-// CAPABILITY FINDINGS (12 entries)
+// CAPABILITY FINDINGS (44 entries)
 // ============================================================================
 constexpr auto ALL_FINDINGS = []() {
   std::array<Finding, 44> arr = {
@@ -61,121 +61,119 @@ constexpr auto ALL_FINDINGS = []() {
         .id = kls::detail::ID("CA36"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::capabilities},
-       {.message = "SUkls::detail::ID bit set",
+       {.message = "SUID bit set",
         .id = kls::detail::ID("SU01"),
         .level = SeverityFindings::Med,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on world-writable file",
+       {.message = "SUID bit set on world-writable file",
         .id = kls::detail::ID("SU02"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on non-executable file",
+       {.message = "SUID bit set on non-executable file",
         .id = kls::detail::ID("SU03"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary found outside standard system "
-                   "directories",
+       {.message = "SUID binary found outside standard system directories",
         .id = kls::detail::ID("SU04"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on file not owned by root",
+       {.message = "SUID bit set on file not owned by root",
         .id = kls::detail::ID("SU05"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on interpreted script",
+       {.message = "SUID bit set on interpreted script",
         .id = kls::detail::ID("SU06"),
         .level = SeverityFindings::Med,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary is world-executable",
+       {.message = "SUID binary is world-executable",
         .id = kls::detail::ID("SU07"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary is group-writable",
+       {.message = "SUID binary is group-writable",
         .id = kls::detail::ID("SU08"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on a symbolic link",
+       {.message = "SUID bit set on a symbolic link",
         .id = kls::detail::ID("SU09"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID bit set on a directory",
+       {.message = "SUID bit set on a directory",
         .id = kls::detail::ID("SU10"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary owned by unknown Ukls::detail::ID",
+       {.message = "SUID binary owned by unknown UID",
         .id = kls::detail::ID("SU11"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary recently modified",
+       {.message = "SUID binary recently modified",
         .id = kls::detail::ID("SU12"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary future timestamp",
+       {.message = "SUID binary future timestamp",
         .id = kls::detail::ID("SU13"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary shows timestamp manipulation",
+       {.message = "SUID binary shows timestamp manipulation",
         .id = kls::detail::ID("SU14"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary world-readable in sensitive path",
+       {.message = "SUID binary world-readable in sensitive path",
         .id = kls::detail::ID("SU15"),
         .level = SeverityFindings::Med,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary ELF magic mismatch",
+       {.message = "SUID binary ELF magic mismatch",
         .id = kls::detail::ID("SU16"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary hardlink count warning",
+       {.message = "SUID binary hardlink count warning",
         .id = kls::detail::ID("SU17"),
         .level = SeverityFindings::Med,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary not executable but readable",
+       {.message = "SUID binary not executable but readable",
         .id = kls::detail::ID("SU18"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary with redundant capabilities",
+       {.message = "SUID binary with redundant capabilities",
         .id = kls::detail::ID("SU19"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary in /tmp or /var",
+       {.message = "SUID binary in /tmp or /var",
         .id = kls::detail::ID("SU20"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary in user home directory",
+       {.message = "SUID binary in user home directory",
         .id = kls::detail::ID("SU21"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary also carries the sticky bit",
+       {.message = "SUID binary also carries the sticky bit",
         .id = kls::detail::ID("SU22"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary user no longer exists",
+       {.message = "SUID binary user no longer exists",
         .id = kls::detail::ID("SU23"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SUkls::detail::ID binary group no longer exists",
+       {.message = "SUID binary group no longer exists",
         .id = kls::detail::ID("SU24"),
         .level = SeverityFindings::MedLow,
         .type_findings = CategoryFindings::health},
-       {.message = "SGkls::detail::ID bit set",
+       {.message = "SGID bit set",
         .id = kls::detail::ID("SG01"),
         .level = SeverityFindings::Med,
         .type_findings = CategoryFindings::health},
-       {.message = "SGkls::detail::ID bit set on world-writable directory",
+       {.message = "SGID bit set on world-writable directory",
         .id = kls::detail::ID("SG02"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message = "SGkls::detail::ID bit set on world-writable file",
+       {.message = "SGID bit set on world-writable file",
         .id = kls::detail::ID("SG03"),
         .level = SeverityFindings::Crit,
         .type_findings = CategoryFindings::health},
-       {.message = "SGkls::detail::ID binary writable by its own group",
+       {.message = "SGID binary writable by its own group",
         .id = kls::detail::ID("SG04"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
-       {.message =
-            "SGkls::detail::ID binary assigned to unknown Gkls::detail::ID",
+       {.message = "SGID binary assigned to unknown GID",
         .id = kls::detail::ID("SG05"),
         .level = SeverityFindings::High,
         .type_findings = CategoryFindings::health},
@@ -199,18 +197,19 @@ constexpr auto ALL_FINDINGS = []() {
 
 namespace detail {
 constexpr bool compare_finding_id(const Finding &f,
-                                  std::uint32_t value) noexcept {
+                                std::uint32_t value) noexcept {
   return f.id.get_value() < value;
 }
 
-[[nodiscard]] constexpr const Finding *
-get_finding_from_span(std::span<const Finding> registry,
-                      const kls::detail::ID &id) noexcept {
+[[nodiscard]] constexpr const Finding *get_finding_from_span(std::span<const Finding> registry, const kls::detail::ID &id) noexcept {
   const auto target = id.get_value();
-  auto it = std::lower_bound(registry.begin(), registry.end(), target,
-                             compare_finding_id);
-  if (it != registry.end() && it->id.get_value() == target) {
-    return &(*it);
+
+  auto it = std::ranges::lower_bound(registry, target, {}, [](const Finding &f){
+    return f.id.get_value();
+  });
+
+  if (it != std::ranges::end(registry) && it->id.get_value() == target) {
+    return &*it;
   }
   return nullptr;
 }
@@ -239,7 +238,7 @@ get_max_level_severity(const std::vector<kls::detail::ID> &id) {
 
     current++;
   }
-  return static_cast<SeverityFindings>(max_level);
+    return static_cast<SeverityFindings>(max_level);
 }
 
 } // namespace kls::findings
