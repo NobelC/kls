@@ -11,8 +11,8 @@
 namespace kls::cli::validator {
   namespace {
     bool is_present(const model::ParsedOptions& opts, std::string_view name) {
-      if (name == "--help" || name == "-H")       {return opts.help;}
-      if (name == "--version" || name == "-V")    {return opts.version;}
+      if (name == "--help" || name == "-h")       {return opts.help;}
+      if (name == "--version" || name == "-v")    {return opts.version;}
       if (name == "--no-color")                   {return opts.no_color;}
       if (name == "--quiet" || name == "-q")      {return opts.quiet;}
       if (name == "--verbose")                    {return opts.verbose;}
