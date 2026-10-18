@@ -1,17 +1,18 @@
-// tests/cli/min_severity_test.cpp
 #include "kls/audit/audit_entry.hpp"
 #include "kls/cli/adapter/severity_count.hpp"
 #include "kls/cli/spec/cli_spec_definition.hpp"
 #include "kls/detail/Id.hpp"
 #include "kls/detail/parse_severity.hpp"
-#include "kls/findings/finding_registry.hpp" // Required for get_max_level_severity tests
+#include "kls/findings/finding_registry.hpp"
 #include "kls/scanner/scanner.hpp"
 #include <gtest/gtest.h>
 #include <vector>
 
 namespace kls::cli::adapter::test {
 
-// Helper to create a minimal AuditEntry without touching globals
+// ARCHITECTURAL NOTE: Isolated test data generation.
+// Helpers prevent global state mutation and ensure deterministic, 
+// reproducible test environments without relying on external fixtures.
 kls::auditor::AuditEntry make_entry(const std::string &name) {
   kls::auditor::AuditEntry entry;
   entry.name = name;
@@ -19,9 +20,7 @@ kls::auditor::AuditEntry make_entry(const std::string &name) {
   return entry;
 }
 
-// Helper to create an AuditItem with specific findings
-scanner::AuditItem make_item(const std::string &name,
-                             std::vector<kls::detail::ID> findings) {
+scanner::AuditItem make_item(const std::string &name, std::vector<kls::detail::ID> findings) {
   scanner::AuditItem item;
   item.entry = make_entry(name);
   item.findings = std::move(findings);
@@ -32,6 +31,8 @@ scanner::AuditItem make_item(const std::string &name,
 // Tests for parser_severity
 // ============================================================================
 
+// Validates case-insensitive parsing of severity strings.
+// Prevents CLI injection or unexpected nullopt returns on valid user input.
 TEST(MinSeverityParserTest, ValidSeverities) {
   auto result_low = parser_severity("low");
   ASSERT_TRUE(result_low.has_value());
@@ -58,6 +59,7 @@ TEST(MinSeverityParserTest, ValidSeverities) {
   EXPECT_EQ(*result_Crit, findings::SeverityFindings::Crit);
 }
 
+// Ensures strict validation rejects malformed or out-of-bounds severity strings.
 TEST(MinSeverityParserTest, InvalidSeverityReturnsNullopt) {
   EXPECT_EQ(parser_severity("invalid"), std::nullopt);
   EXPECT_EQ(parser_severity(""), std::nullopt);
@@ -69,6 +71,8 @@ TEST(MinSeverityParserTest, InvalidSeverityReturnsNullopt) {
 // Tests for apply_min_severity
 // ============================================================================
 
+// Validates the two-pass filtering pipeline: 
+// 1. Removes findings below threshold. 2. Prunes items that become empty.
 TEST(ApplyMinSeverityTest, FilterByMinimumSeverity) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("test1", {
@@ -85,7 +89,9 @@ TEST(ApplyMinSeverityTest, FilterByMinimumSeverity) {
   // Verify CA01 (Low) was removed, SU01/SU02 remained
   bool has_ca01 = false;
   for (const auto &id : output.items[0].findings) {
-    if (id == kls::detail::ID("CA01")) {has_ca01 = true;}
+    if (id == kls::detail::ID("CA01")) {
+      has_ca01 = true;
+    }
   }
   EXPECT_FALSE(has_ca01);
 }
@@ -115,6 +121,7 @@ TEST(ApplyMinSeverityTest, CaseInsensitivity) {
   EXPECT_EQ(output.items[0].findings.size(), 1);
 }
 
+// Ensures invalid CLI input fails gracefully without mutating the output state.
 TEST(ApplyMinSeverityTest, InvalidSeverityIsNoOp) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("test1", {
@@ -133,6 +140,7 @@ TEST(ApplyMinSeverityTest, InvalidSeverityIsNoOp) {
 // Tests for SeverityCount::at_or_above()
 // ============================================================================
 
+// Verifies cumulative threshold logic. Critical for `--fail-on` exit code evaluation.
 TEST(SeverityCountTest, AccumulationLogic) {
   kls::cli::adapter::SeverityCount counts;
   counts.low = 2;
@@ -144,8 +152,8 @@ TEST(SeverityCountTest, AccumulationLogic) {
   // Total: 2+3+5+4+1 = 15
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 15);
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::MedLow), 13); // 3+5+4+1
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 10);     // 5+4+1
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 5);     // 4+1
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 10);    // 5+4+1
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 5);    // 4+1
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit), 1);
 }
 
@@ -159,6 +167,7 @@ TEST(SeverityCountTest, ZeroCounts) {
 // Tests for count_findings_by_severity()
 // ============================================================================
 
+// Ensures aggregation correctly sums findings across multiple distinct audit items.
 TEST(CountFindingsTest, AggregationAcrossItems) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("a", {kls::detail::ID("CA01")})); // Low
@@ -173,12 +182,12 @@ TEST(CountFindingsTest, AggregationAcrossItems) {
 }
 
 // ============================================================================
-// H-12 Specific Tests: Robustness of get_max_level_severity
+// Robustness Tests: Safety of get_max_level_severity
 // ============================================================================
 
+// Security regression test. Guarantees that unregistered finding IDs 
+// do not cause null pointer dereferences (segfaults) during evaluation.
 TEST(FindingRegistryRobustnessTest, HandlesUnknownIdsGracefully) {
-  // This test verifies that passing an ID not present in the registry
-  // does NOT cause a segfault (null pointer dereference).
   std::vector<kls::detail::ID> ids;
   ids.emplace_back("SU01"); // Known: Med
   ids.emplace_back("ZZZZ"); // Unknown: Should be ignored safely
@@ -210,6 +219,8 @@ TEST(FindingRegistryRobustnessTest, EmptyVectorReturnsNone) {
 // Integration Tests: --fail-on Threshold Logic
 // ============================================================================
 
+// Simulates the `--fail-on` policy evaluation. 
+// Verifies that threshold checks correctly trigger or bypass the exit code 5 condition.
 TEST(FailOnThresholdIntegration, TriggersExitCode5WhenThresholdMet) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("target", {kls::detail::ID("SU01")})); // Med
