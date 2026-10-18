@@ -235,12 +235,13 @@ enum class FindingCategory {
     coverage
 };
 
-enum class Severity {
-    info,
-    low,
-    medium,
-    high,
-    critical
+enum class SeverityFindings : uint8_t {
+    None = 0,
+    Low = 1,
+    MedLow = 2,
+    Med = 3,
+    High = 4,
+    Crit = 5
 };
 
 struct Finding {

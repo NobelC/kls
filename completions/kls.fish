@@ -39,7 +39,7 @@ complete -c kls -l security-report -d 'Generate detailed security report'
 complete -c kls -l immutable -d 'Display files with immutable attribute'
 complete -c kls -l setuid-tree -d 'Recursively scan SetUID/SetGID tree'
 complete -c kls -l timeline -d 'Present file history or timeline'
-complete -c kls -l min-severity -r -f -a "info medium high" -d 'Filter alerts to specified severity'
+complete -c kls -l min-severity -r -f -a "low medlow med high crit" -d 'Filter alerts to specified severity'
 complete -c kls -l only-anomalies -d 'Only show anomalous filesystem entries'
 
 # Enable file completion for positional arguments

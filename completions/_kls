@@ -32,7 +32,7 @@ _kls() {
         '--immutable[Display files with the immutable attribute]'
         '--setuid-tree[Recursively scan and display SetUID/SetGID file tree]'
         '--timeline[Present file history or timeline]'
-        '--min-severity[Filter security alerts to specified severity]:severity:(info medium high)'
+        '--min-severity[Filter security alerts to specified severity]:severity:(low medlow med high crit)'
         '--only-anomalies[Only show anomalous filesystem entries]'
         '*:file:_files'
     )

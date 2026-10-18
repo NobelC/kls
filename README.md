@@ -98,13 +98,12 @@ All security observations are represented as findings rather than separate
 health and capability systems.
 
 Severity levels:
-
-```text
-info
-low
-medium
-high
-critical
+None
+Low
+MedLow
+Med
+High
+Crit
 ```
 
 A finding may be informational. The existence of a finding does not
@@ -149,9 +148,9 @@ Planned audit controls:
 --inventory
 --details
 --summary
---min-severity=<info|low|medium|high|critical>
+--min-severity=<low|medlow|med|high|crit>
+--fail-on=<low|medlow|med|high|crit>
 --category=<category>
---fail-on=<low|medium|high|critical>
 --fail-on-findings=<count>
 --format=<table|json|csv|sarif>
 ```

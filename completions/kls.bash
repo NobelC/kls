@@ -29,7 +29,7 @@ _kls_completions() {
     esac
 
     if [[ ${cur} == -* ]] ; then
-        COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+        COMPREPLY=( $(compgen -W "low medlow med high crit" -- "${cur}") )
         return 0
     fi
 
