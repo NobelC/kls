@@ -115,8 +115,9 @@ Recursively scan and display the tree of directories focusing on SetUID and SetG
 .B \-\-timeline
 Present file history or timeline based on filesystem timestamps.
 .TP
-.BI \-\-min\-severity " SEVERITY"
+.BI \-\-min\-severity  " SEVERITY "
 Filter security health alerts to only show entries with a severity of at least \fISEVERITY\fR.
+Valid values are: \fBlow\fR, \fBmedlow\fR, \fBmed\fR, \fBhigh\fR, \fBcrit\fR.
 .TP
 .B \-\-only\-anomalies
 Only show anomalous filesystem entries (such as hidden files, suspicious permissions, or invalid symbolic links).

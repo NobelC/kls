@@ -139,7 +139,7 @@ consteval auto build_cli_spec(){
     OptionSpec{
         .name = "--min-severity",
         .alias = "",
-        .description = "Filter findings by minimum severity (low|med|high|crit)",
+        .description ="Filter findings by minimum severity (low|medlow|med|high|crit)",
         .category = Category::FILTERING,
         .value_type = ValueType::STRING,
         .conflicts = {},
@@ -149,7 +149,7 @@ consteval auto build_cli_spec(){
     OptionSpec{
       .name = "--fail-on",
       .alias = "",
-      .description = "Exit with code 5 if findings at or above severity exist",
+      .description = "Exit with code 5 if findings at or above severity exist (low|medlow|med|high|crit)",
       .category = Category::FILTERING,
       .value_type = ValueType::STRING,
       .conflicts = {},
