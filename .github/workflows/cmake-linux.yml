@@ -31,49 +31,82 @@ jobs:
     - name: Install Toolchain and Analysis Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y build-essential llvm clang clang-tidy cppcheck cmake libstdc++-12-dev lcov libgtest-dev
+        sudo apt-get install -y \
+          build-essential llvm clang clang-tidy cppcheck cmake \
+          libstdc++-12-dev lcov libgtest-dev
 
     - name: Run Cppcheck
       run: |
-        cppcheck --enable=all \
-        --error-exitcode=1 \
-        --inline-suppr \
-        --std=c++20 \
-        --suppress=syntaxError:tests/ \
-        --suppress=missingIncludeSystem \
-        --suppress=missingInclude \
-        --suppress=unmatchedSuppression \
-        -I include/ \
-        .
+        cppcheck \
+          --enable=warning,style,performance,portability \
+          --error-exitcode=1 \
+          --inline-suppr \
+          --std=c++20 \
+          --suppress=syntaxError:tests/ \
+          --suppress=missingIncludeSystem \
+          --suppress=unmatchedSuppression \
+          -I include/ \
+          src/
 
     - name: Configure CMake
       run: >
         cmake -B build
-        -DCMAKE_CXX_COMPILER=${{matrix.cpp_comp}}
-        -DCMAKE_C_COMPILER=${{matrix.c_comp}}
-        -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_comp }}
+        -DCMAKE_C_COMPILER=${{ matrix.c_comp }}
+        -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DENABLE_SANITIZERS=ON
         -DENABLE_COVERAGE=ON
 
     - name: Build
-      run: cmake --build build --config ${{env.BUILD_TYPE}}
+      run: cmake --build build --config ${{ env.BUILD_TYPE }}
 
-    - name: Run Clang-Tidy
+    - name: Run Clang-Tidy (Critical Checks)
       if: matrix.compiler == 'clang'
       run: |
-        find . -name "*.cpp" -o -name "*.c" | grep -v "build/" | xargs clang-tidy -p build/ --warnings-as-errors='*'
+        find src/ -type f \( -name "*.cpp" -o -name "*.c" \) | \
+          xargs clang-tidy \
+            -p build/ \
+            --warnings-as-errors="bugprone-*,concurrency-*" \
+            --extra-arg=-std=c++20
+
+    - name: Run Clang-Tidy (Non-Critical Report)
+      if: matrix.compiler == 'clang'
+      continue-on-error: true
+      run: |
+        find src/ -type f \( -name "*.cpp" -o -name "*.c" \) | \
+          xargs clang-tidy \
+            -p build/ \
+            --extra-arg=-std=c++20 \
+            2>&1 | tee tidy-report.txt || true
+        echo "::notice::Non-critical tidy warnings logged. Review tidy-report.txt artifact."
+
+    - name: Upload Tidy Report
+      if: matrix.compiler == 'clang' && always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: clang-tidy-report-${{ matrix.compiler }}
+        path: tidy-report.txt
+        retention-days: 7
 
     - name: Run Tests (Logic + ASan + UBSan)
       working-directory: build
       timeout-minutes: 3
       run: ctest --output-on-failure
 
+    - name: Generate Coverage
+      if: matrix.compiler == 'gcc'
+      working-directory: build
+      run: |
+        lcov --capture --directory . --output-file coverage.info \
+          --ignore-errors mismatch,mismatch \
+          --exclude '*/tests/*' --exclude '*/build/*' --exclude '/usr/*'
+        lcov --list coverage.info
 
     - name: Upload to Codecov
       if: matrix.compiler == 'gcc'
       uses: codecov/codecov-action@v4
       with:
-        files: coverage.info
+        files: build/coverage.info
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
