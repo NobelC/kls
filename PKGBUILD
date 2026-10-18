@@ -2,7 +2,7 @@
 pkgname=kls
 pkgver=0.1.1
 pkgrel=2
-pkgdesc="A security-focused directory listing tool"
+pkgdesc="A read-only Linux filesystem security auditor"
 arch=('x86_64')
 url="https://github.com/NobelC/kls"
 license=('GPL-3.0-only')
@@ -26,5 +26,3 @@ package() {
   DESTDIR="$pkgdir" cmake --install build
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
-
-

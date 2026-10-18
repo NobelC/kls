@@ -1,8 +1,6 @@
-kls is a modern, security-focused alternative to the standard ls command.
-It lists directory contents while performing deep security auditing, highlighting
-file capabilities, potential vulnerabilities, and filesystem anomalies.
-
-Designed for administrators, security auditors, and power users, kls helps
-identify world-writable files, broken or suspicious symbolic links, files with
-active capabilities, SetUID/SetGID configurations, and other security risks
-that are typically hard to notice in standard terminal outputs.
+kls is a read-only Linux filesystem security auditor.
+It inspects directory trees, identifies security-relevant conditions, and reports
+both its findings and the coverage limitations of the audit. Designed for
+administrators, security auditors, and power users, kls helps identify
+world-writable files, broken or suspicious symbolic links, files with active
+capabilities, SetUID/SetGID configurations, and other security risks.
