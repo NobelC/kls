@@ -286,3 +286,9 @@ generated/
 generated/
 
 repomix-output.xml
+
+# ----------------------------------------------------------------------------
+# H-07: Root Build Artifacts (must not be tracked)
+# ----------------------------------------------------------------------------
+/Makefile
+/cmake_uninstall.cmake

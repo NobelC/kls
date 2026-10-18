@@ -235,7 +235,7 @@ set(CPACK_DEBIAN_PACKAGE_DEPENDS "libstdc++6, libc6")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "https://github.com/NobelC/kls")
 
 # RPM (.rpm)
-set(CPACK_RPM_PACKAGE_LICENSE "MIT")
+set(CPACK_RPM_PACKAGE_LICENSE "GPL-3.0-only")
 set(CPACK_RPM_PACKAGE_GROUP "Applications/System")
 set(CPACK_RPM_PACKAGE_REQUIRES "libstdc++, glibc")
 set(CPACK_RPM_PACKAGE_URL "https://github.com/NobelC/kls")
