@@ -1,7 +1,0 @@
-Checks: >
-  *,
-  -abseil-*,
-  -llvm-include-order,
-  -modernize-use-trailing-return-type
-WarningsAsErrors: ''
-HeaderFilterRegex: '.*'
