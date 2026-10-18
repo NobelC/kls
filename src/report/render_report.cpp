@@ -115,7 +115,7 @@ std::string_view parser_severity_finding(const kls::findings::SeverityFindings &
     return "CRIT";
     break;
   }
-  return "UNK";
+  return "NONE";
 }
 
 namespace kls::report {

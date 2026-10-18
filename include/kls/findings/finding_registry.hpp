@@ -220,24 +220,25 @@ get_finding(const kls::detail::ID &id) noexcept {
   return detail::get_finding_from_span(ALL_FINDINGS, id);
 }
 
-inline SeverityFindings
-get_max_level_severity(const std::vector<kls::detail::ID> &id) {
-  if (id.empty()) {
-    return SeverityFindings::None;
-  }
+inline SeverityFindings get_max_level_severity(const std::vector<kls::detail::ID>& ids) noexcept {
+    if (ids.empty()) {
+        return SeverityFindings::None;
+    }
 
-  const kls::detail::ID *current = id.data();
-  const kls::detail::ID *end = current + id.size();
-  std::underlying_type_t<SeverityFindings> max_level = 0;
-  while (current < end) {
-    const Finding *ID_INFORMATION = get_finding(*current);
-    auto current_level = static_cast<std::underlying_type_t<SeverityFindings>>(
-        ID_INFORMATION->level);
+    auto max_level = static_cast<std::underlying_type_t<SeverityFindings>>(SeverityFindings::None);
 
-    max_level = (current_level > max_level) ? current_level : max_level;
+    for (const auto& id : ids) {
+        const Finding* finding = get_finding(id);
+        if (!finding) {
+            continue; 
+        }
 
-    current++;
-  }
+        auto current_level = static_cast<std::underlying_type_t<SeverityFindings>>(finding->level);
+        if (current_level > max_level) {
+            max_level = current_level;
+        }
+    }
+
     return static_cast<SeverityFindings>(max_level);
 }
 

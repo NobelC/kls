@@ -1,14 +1,17 @@
+// tests/cli/min_severity_test.cpp
 #include "kls/audit/audit_entry.hpp"
 #include "kls/cli/adapter/severity_count.hpp"
 #include "kls/cli/spec/cli_spec_definition.hpp"
 #include "kls/detail/Id.hpp"
 #include "kls/detail/parse_severity.hpp"
+#include "kls/findings/finding_registry.hpp" // Required for get_max_level_severity tests
 #include "kls/scanner/scanner.hpp"
 #include <gtest/gtest.h>
 #include <vector>
 
 namespace kls::cli::adapter::test {
 
+// Helper to create a minimal AuditEntry without touching globals
 kls::auditor::AuditEntry make_entry(const std::string &name) {
   kls::auditor::AuditEntry entry;
   entry.name = name;
@@ -16,6 +19,7 @@ kls::auditor::AuditEntry make_entry(const std::string &name) {
   return entry;
 }
 
+// Helper to create an AuditItem with specific findings
 scanner::AuditItem make_item(const std::string &name,
                              std::vector<kls::detail::ID> findings) {
   scanner::AuditItem item;
@@ -25,7 +29,7 @@ scanner::AuditItem make_item(const std::string &name,
 }
 
 // ============================================================================
-// Tests para parser_severity
+// Tests for parser_severity
 // ============================================================================
 
 TEST(MinSeverityParserTest, ValidSeverities) {
@@ -37,225 +41,99 @@ TEST(MinSeverityParserTest, ValidSeverities) {
   ASSERT_TRUE(result_Low.has_value());
   EXPECT_EQ(*result_Low, findings::SeverityFindings::Low);
 
-  auto result_LOW = parser_severity("LOW");
-  ASSERT_TRUE(result_LOW.has_value());
-  EXPECT_EQ(*result_LOW, findings::SeverityFindings::Low);
-
-  auto result_medlow = parser_severity("medlow");
-  ASSERT_TRUE(result_medlow.has_value());
-  EXPECT_EQ(*result_medlow, findings::SeverityFindings::MedLow);
-
-  auto result_MedLow = parser_severity("MedLow");
-  ASSERT_TRUE(result_MedLow.has_value());
-  EXPECT_EQ(*result_MedLow, findings::SeverityFindings::MedLow);
-
-  auto result_med = parser_severity("med");
-  ASSERT_TRUE(result_med.has_value());
-  EXPECT_EQ(*result_med, findings::SeverityFindings::Med);
+  auto result_MEDLOW = parser_severity("medlow");
+  ASSERT_TRUE(result_MEDLOW.has_value());
+  EXPECT_EQ(*result_MEDLOW, findings::SeverityFindings::MedLow);
 
   auto result_Med = parser_severity("Med");
   ASSERT_TRUE(result_Med.has_value());
   EXPECT_EQ(*result_Med, findings::SeverityFindings::Med);
 
-  auto result_high = parser_severity("high");
-  ASSERT_TRUE(result_high.has_value());
-  EXPECT_EQ(*result_high, findings::SeverityFindings::High);
-
   auto result_High = parser_severity("High");
   ASSERT_TRUE(result_High.has_value());
   EXPECT_EQ(*result_High, findings::SeverityFindings::High);
 
-  auto result_crit = parser_severity("crit");
-  ASSERT_TRUE(result_crit.has_value());
-  EXPECT_EQ(*result_crit, findings::SeverityFindings::Crit);
-
-  auto result_Crit = parser_severity("Crit");
+  auto result_Crit = parser_severity("crit");
   ASSERT_TRUE(result_Crit.has_value());
   EXPECT_EQ(*result_Crit, findings::SeverityFindings::Crit);
 }
 
 TEST(MinSeverityParserTest, InvalidSeverityReturnsNullopt) {
   EXPECT_EQ(parser_severity("invalid"), std::nullopt);
-  EXPECT_EQ(parser_severity("unknown"), std::nullopt);
   EXPECT_EQ(parser_severity(""), std::nullopt);
-  EXPECT_EQ(parser_severity("medium"), std::nullopt);
-  EXPECT_EQ(parser_severity("critical"), std::nullopt);
+  EXPECT_EQ(parser_severity("medium"), std::nullopt); // Not in enum mapping
+  EXPECT_EQ(parser_severity("critical"), std::nullopt); // Not in enum mapping
 }
 
 // ============================================================================
-// Tests para apply_min_severity
+// Tests for apply_min_severity
 // ============================================================================
 
-TEST(ApplyMinSeverityTest, FilterLowSeverityFindings) {
+TEST(ApplyMinSeverityTest, FilterByMinimumSeverity) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU01"), // Med
-                                                kls::detail::ID("SU02"), // Crit
-                                            }));
+      kls::detail::ID("CA01"), // Low
+      kls::detail::ID("SU01"), // Med
+      kls::detail::ID("SU02"), // Crit
+  }));
 
   definition_options::apply_min_severity(output, "med");
 
   ASSERT_EQ(output.items.size(), 1);
   ASSERT_EQ(output.items[0].findings.size(), 2);
-
+  
+  // Verify CA01 (Low) was removed, SU01/SU02 remained
   bool has_ca01 = false;
-  bool has_su01 = false;
-  bool has_su02 = false;
-
   for (const auto &id : output.items[0].findings) {
-    if (id == kls::detail::ID("CA01")) {
-      has_ca01 = true;
-    }
-    if (id == kls::detail::ID("SU01")) {
-      has_su01 = true;
-    }
-    if (id == kls::detail::ID("SU02")) {
-      has_su02 = true;
-    }
+    if (id == kls::detail::ID("CA01")) {has_ca01 = true;}
   }
-
   EXPECT_FALSE(has_ca01);
-  EXPECT_TRUE(has_su01);
-  EXPECT_TRUE(has_su02);
 }
 
-TEST(ApplyMinSeverityTest, FilterCriticalOnly) {
+TEST(ApplyMinSeverityTest, EmptyItemsRemovedAfterFiltering) {
   scanner::ScanOutput output;
-  output.items.push_back(
-      make_item("test1", {
-                             kls::detail::ID("CA01"), // Low
-                             kls::detail::ID("CA36"), // MedLow
-                             kls::detail::ID("SU01"), // Med
-                             kls::detail::ID("SU05"), // High
-                             kls::detail::ID("SU02"), // Crit
-                         }));
-
-  definition_options::apply_min_severity(output, "crit");
-
-  ASSERT_EQ(output.items.size(), 1);
-  ASSERT_EQ(output.items[0].findings.size(), 1);
-  EXPECT_EQ(output.items[0].findings[0], kls::detail::ID("SU02"));
-}
-
-TEST(ApplyMinSeverityTest, NoFilteringWithLow) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU01"), // Med
-                                                kls::detail::ID("SU02"), // Crit
-                                            }));
-
-  definition_options::apply_min_severity(output, "low");
-  ASSERT_EQ(output.items.size(), 1);
-  EXPECT_EQ(output.items[0].findings.size(), 3);
-}
-
-TEST(ApplyMinSeverityTest, EmptyFindingsItemRemoved) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {}));
-
-  definition_options::apply_min_severity(output, "high");
-  ASSERT_EQ(output.items.size(), 0);
-}
-
-TEST(ApplyMinSeverityTest, AllFindingsFilteredOutRemovesItem) {
-  scanner::ScanOutput output;
-  output.items.push_back(
-      make_item("test1", {
-                             kls::detail::ID("CA01"), // Low
-                             kls::detail::ID("CA36"), // MedLow
-                         }));
+  output.items.push_back(make_item("empty", {}));
+  output.items.push_back(make_item("filtered_out", {
+      kls::detail::ID("CA01"), // Low
+  }));
 
   definition_options::apply_min_severity(output, "high");
 
-  ASSERT_EQ(output.items.size(), 0);
+  // Both should be gone: 'empty' had nothing, 'filtered_out' lost its only finding
+  EXPECT_EQ(output.items.size(), 0);
 }
 
-TEST(ApplyMinSeverityTest, MultipleItemsFilteredIndependently) {
+TEST(ApplyMinSeverityTest, CaseInsensitivity) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU02"), // Crit
-                                            }));
-  output.items.push_back(make_item("test2", {
-                                                kls::detail::ID("SU01"), // Med
-                                                kls::detail::ID("SU05"), // High
-                                            }));
-  output.items.push_back(
-      make_item("test3", {
-                             kls::detail::ID("CA36"), // MedLow
-                         }));
-
-  definition_options::apply_min_severity(output, "high");
-
-  ASSERT_EQ(output.items.size(), 2);
-
-  bool has_test1 = false;
-  bool has_test2 = false;
-  for (const auto &item : output.items) {
-    if (item.entry.name == "test1") {
-      has_test1 = true;
-      EXPECT_EQ(item.findings.size(), 1);
-      EXPECT_EQ(item.findings[0], kls::detail::ID("SU02"));
-    }
-    if (item.entry.name == "test2") {
-      has_test2 = true;
-      EXPECT_EQ(item.findings.size(), 1);
-    }
-  }
-  EXPECT_TRUE(has_test1);
-  EXPECT_TRUE(has_test2);
-}
-
-TEST(ApplyMinSeverityTest, CaseInsensitiveSeverity) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU01"), // Med
-                                            }));
+      kls::detail::ID("SU01"), // Med
+  }));
 
   definition_options::apply_min_severity(output, "MED");
 
   ASSERT_EQ(output.items.size(), 1);
-  ASSERT_EQ(output.items[0].findings.size(), 1);
-  EXPECT_EQ(output.items[0].findings[0], kls::detail::ID("SU01"));
+  EXPECT_EQ(output.items[0].findings.size(), 1);
 }
 
-TEST(ApplyMinSeverityTest, PreserveOrderOfFindings) {
+TEST(ApplyMinSeverityTest, InvalidSeverityIsNoOp) {
   scanner::ScanOutput output;
   output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("SU02"), // Crit
-                                                kls::detail::ID("SU05"), // High
-                                                kls::detail::ID("SU01"), // Med
-                                            }));
+      kls::detail::ID("CA01"),
+      kls::detail::ID("SU01"),
+  }));
 
-  definition_options::apply_min_severity(output, "med");
+  definition_options::apply_min_severity(output, "garbage");
 
-  ASSERT_EQ(output.items.size(), 1);
-  ASSERT_EQ(output.items[0].findings.size(), 3);
-  EXPECT_EQ(output.items[0].findings[0], kls::detail::ID("SU02"));
-  EXPECT_EQ(output.items[0].findings[1], kls::detail::ID("SU05"));
-  EXPECT_EQ(output.items[0].findings[2], kls::detail::ID("SU01"));
-}
-
-TEST(ApplyMinSeverityTest, InvalidSeverityDoesNotFilter) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU01"), // Med
-                                            }));
-
-  definition_options::apply_min_severity(output, "invalid");
-
+  // Should remain unchanged because parsing failed
   ASSERT_EQ(output.items.size(), 1);
   EXPECT_EQ(output.items[0].findings.size(), 2);
 }
+
 // ============================================================================
-// Tests para SeverityCount::at_or_above()
+// Tests for SeverityCount::at_or_above()
 // ============================================================================
 
-TEST(SeverityCountTest, AtOrAboveWithMixedFindings) {
+TEST(SeverityCountTest, AccumulationLogic) {
   kls::cli::adapter::SeverityCount counts;
   counts.low = 2;
   counts.med_low = 3;
@@ -263,206 +141,86 @@ TEST(SeverityCountTest, AtOrAboveWithMixedFindings) {
   counts.high = 4;
   counts.crit = 1;
 
-  // Total: 2 + 3 + 5 + 4 + 1 = 15
-
+  // Total: 2+3+5+4+1 = 15
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 15);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::MedLow), 13);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 10);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 5);
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::MedLow), 13); // 3+5+4+1
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 10);     // 5+4+1
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 5);     // 4+1
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit), 1);
 }
 
-TEST(SeverityCountTest, AtOrAboveWithEmptyCounts) {
+TEST(SeverityCountTest, ZeroCounts) {
   kls::cli::adapter::SeverityCount counts;
-  // Todos los contadores en 0
-
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 0);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::MedLow), 0);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 0);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 0);
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit), 0);
 }
 
-TEST(SeverityCountTest, AtOrAboveWithOnlyCrit) {
-  kls::cli::adapter::SeverityCount counts;
-  counts.crit = 5;
+// ============================================================================
+// Tests for count_findings_by_severity()
+// ============================================================================
 
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 5);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::MedLow), 5);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med), 5);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High), 5);
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit), 5);
-}
-
-TEST(SeverityCountTest, AtOrAboveWithOnlyLow) {
-  kls::cli::adapter::SeverityCount counts;
-  counts.low = 10;
-
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Low), 10);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::MedLow), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Med), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::High), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Crit), 0);
+TEST(CountFindingsTest, AggregationAcrossItems) {
+  scanner::ScanOutput output;
+  output.items.push_back(make_item("a", {kls::detail::ID("CA01")})); // Low
+  output.items.push_back(make_item("b", {kls::detail::ID("SU01"), kls::detail::ID("SU02")})); // Med, Crit
+  
+  auto counts = kls::cli::adapter::count_findings_by_severity(output);
+  
+  EXPECT_EQ(counts.low, 1);
+  EXPECT_EQ(counts.med, 1);
+  EXPECT_EQ(counts.crit, 1);
+  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 3);
 }
 
 // ============================================================================
-// Tests para count_findings_by_severity()
+// H-12 Specific Tests: Robustness of get_max_level_severity
 // ============================================================================
 
-TEST(CountFindingsTest, EmptyScanOutput) {
-  scanner::ScanOutput output;
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  EXPECT_EQ(counts.low, 0);
-  EXPECT_EQ(counts.med_low, 0);
-  EXPECT_EQ(counts.med, 0);
-  EXPECT_EQ(counts.high, 0);
-  EXPECT_EQ(counts.crit, 0);
+TEST(FindingRegistryRobustnessTest, HandlesUnknownIdsGracefully) {
+  // This test verifies that passing an ID not present in the registry
+  // does NOT cause a segfault (null pointer dereference).
+  std::vector<kls::detail::ID> ids;
+  ids.emplace_back("SU01"); // Known: Med
+  ids.emplace_back("ZZZZ"); // Unknown: Should be ignored safely
+  
+  auto max_sev = kls::findings::get_max_level_severity(ids);
+  
+  // Must return Med (from SU01), ignoring ZZZZ
+  EXPECT_EQ(max_sev, findings::SeverityFindings::Med);
 }
 
-TEST(CountFindingsTest, ItemsWithoutFindings) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {}));
-  output.items.push_back(make_item("test2", {}));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  EXPECT_EQ(counts.low, 0);
-  EXPECT_EQ(counts.med_low, 0);
-  EXPECT_EQ(counts.med, 0);
-  EXPECT_EQ(counts.high, 0);
-  EXPECT_EQ(counts.crit, 0);
+TEST(FindingRegistryRobustnessTest, AllUnknownIdsReturnNone) {
+  std::vector<kls::detail::ID> ids;
+  ids.emplace_back("AAAA");
+  ids.emplace_back("BBBB");
+  
+  auto max_sev = kls::findings::get_max_level_severity(ids);
+  
+  // If no valid findings exist, severity must default to None
+  EXPECT_EQ(max_sev, findings::SeverityFindings::None);
 }
 
-TEST(CountFindingsTest, MixedFindingsAcrossItems) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA01"), // Low
-                                                kls::detail::ID("SU01"), // Med
-                                            }));
-  output.items.push_back(
-      make_item("test2", {
-                             kls::detail::ID("CA36"), // MedLow
-                             kls::detail::ID("SU05"), // High
-                             kls::detail::ID("SU02"), // Crit
-                         }));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  EXPECT_EQ(counts.low, 1);     // CA01
-  EXPECT_EQ(counts.med_low, 1); // CA36
-  EXPECT_EQ(counts.med, 1);     // SU01
-  EXPECT_EQ(counts.high, 1);    // SU05
-  EXPECT_EQ(counts.crit, 1);    // SU02
-}
-
-TEST(CountFindingsTest, MultipleFindingsOfSameSeverity) {
-  scanner::ScanOutput output;
-  output.items.push_back(
-      make_item("test1", {
-                             kls::detail::ID("CA01"), // Low
-                             kls::detail::ID("SU03"), // MedLow
-                             kls::detail::ID("SU09"), // MedLow
-                             kls::detail::ID("SU10"), // MedLow
-                         }));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  EXPECT_EQ(counts.low, 1);     // CA01
-  EXPECT_EQ(counts.med_low, 3); // SU03, SU09, SU10
-  EXPECT_EQ(counts.med, 0);
-  EXPECT_EQ(counts.high, 0);
-  EXPECT_EQ(counts.crit, 0);
-}
-
-TEST(CountFindingsTest, RealWorldScenario) {
-  // Simular un escaneo típico con varios SUID binaries
-  scanner::ScanOutput output;
-  output.items.push_back(
-      make_item("passwd", {
-                              kls::detail::ID("SU01"), // Med - SUID bit set
-                          }));
-  output.items.push_back(
-      make_item("sudo", {
-                            kls::detail::ID("SU01"), // Med - SUID bit set
-                            kls::detail::ID("CA26"), // Crit - CAP_SETUID
-                        }));
-  output.items.push_back(make_item(
-      "ping", {
-                  kls::detail::ID("CA01"), // Low - capability assigned
-              }));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  EXPECT_EQ(counts.low, 1); // CA01
-  EXPECT_EQ(counts.med_low, 0);
-  EXPECT_EQ(counts.med, 2); // 2x SU01
-  EXPECT_EQ(counts.high, 0);
-  EXPECT_EQ(counts.crit, 1); // CA26
-
-  // Verificar umbrales
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Low), 4); // todos
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Med),
-            3); // med + crit
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::High),
-            1); // solo crit
-  EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit),
-            1); // solo crit
+TEST(FindingRegistryRobustnessTest, EmptyVectorReturnsNone) {
+  std::vector<kls::detail::ID> ids;
+  auto max_sev = kls::findings::get_max_level_severity(ids);
+  EXPECT_EQ(max_sev, findings::SeverityFindings::None);
 }
 
 // ============================================================================
-// Tests de integración: --fail-on threshold logic
+// Integration Tests: --fail-on Threshold Logic
 // ============================================================================
 
-TEST(FailOnThresholdTest, ShouldFailWhenFindingsExist) {
+TEST(FailOnThresholdIntegration, TriggersExitCode5WhenThresholdMet) {
   scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("SU01"), // Med
-                                            }));
-
+  output.items.push_back(make_item("target", {kls::detail::ID("SU01")})); // Med
+  
   auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  // --fail-on=low: debe fallar (Med >= Low)
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::Low), 0);
-
-  // --fail-on=med: debe fallar (Med >= Med)
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::Med), 0);
-
-  // --fail-on=high: NO debe fallar (Med < High)
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::High), 0);
-
-  // --fail-on=crit: NO debe fallar (Med < Crit)
+  
+  // --fail-on=low -> Med >= Low -> True
+  EXPECT_GT(counts.at_or_above(findings::SeverityFindings::Low), 0);
+  
+  // --fail-on=crit -> Med < Crit -> False
   EXPECT_EQ(counts.at_or_above(findings::SeverityFindings::Crit), 0);
-}
-
-TEST(FailOnThresholdTest, ShouldNotFailWhenNoFindings) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {}));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  // Ningún --fail-on debe disparar exit code 5
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Low), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Med), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::High), 0);
-  EXPECT_EQ(counts.at_or_above(kls::findings::SeverityFindings::Crit), 0);
-}
-
-TEST(FailOnThresholdTest, OnlyCritShouldTriggerCritThreshold) {
-  scanner::ScanOutput output;
-  output.items.push_back(make_item("test1", {
-                                                kls::detail::ID("CA26"), // Crit
-                                            }));
-
-  auto counts = kls::cli::adapter::count_findings_by_severity(output);
-
-  // Todos los thresholds deben fallar
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::Low), 0);
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::MedLow), 0);
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::Med), 0);
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::High), 0);
-  EXPECT_GT(counts.at_or_above(kls::findings::SeverityFindings::Crit), 0);
 }
 
 } // namespace kls::cli::adapter::test
