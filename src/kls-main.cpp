@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
   if (opts.version) {
     std::cout << "kls " << KRON_VERSION << "\n";
     std::cout << "Copyright (C) 2026 NobelC\n";
-    std::cout << "License MIT\n";
+    std::cout << "License GPL-3.0-only\n";
     return 0;
   }
 
