@@ -16,7 +16,7 @@ namespace kls::cli::adapter {
       case kls::findings::SeverityFindings::None:
         return 0;   
       case kls::findings::SeverityFindings::Low:
-          return low + med_low + high + crit;
+          return low + med_low + med + high + crit;
       case kls::findings::SeverityFindings::MedLow:
         return med_low + med + high + crit;
       case  kls::findings::SeverityFindings::Med:
