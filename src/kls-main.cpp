@@ -22,40 +22,31 @@ int main(int argc, char *argv[]) {
   // 1. Parse
   std::vector<std::string_view> args(argv + 1, argv + argc);
   auto parse_result = kls::cli::parser::parse(args);
-
-  if (auto *failure =
-          std::get_if<kls::Failure<kls::cli::model::CliError>>(&parse_result)) {
-    std::cerr << "Error: " << failure->error.message << "\n";
+  if (auto *failure = std::get_if<kls::Failure<kls::cli::model::CliError>>(&parse_result)) {
+    std::cerr << "kls: error: " << failure->error.message << "\n";
     std::cerr << "Run 'kls --help' for usage.\n";
-    return 2; // Invalid CLI
+    return 2;
   }
-
-  auto opts =
-      std::get<kls::Success<kls::cli::model::ParsedOptions>>(parse_result)
-          .value;
+  auto opts = std::get<kls::Success<kls::cli::model::ParsedOptions>>(parse_result).value;
 
   // 2. Validate
   auto validate_result = kls::cli::validator::validate(opts);
-  if (auto *failure = std::get_if<kls::Failure<kls::cli::model::CliError>>(
-          &validate_result)) {
-    std::cerr << "Error: " << failure->error.message << "\n";
+  if (auto *failure = std::get_if<kls::Failure<kls::cli::model::CliError>>(&validate_result)) {
+    std::cerr << "kls: error: " << failure->error.message << "\n";
     if (!failure->error.conflicting_with.empty()) {
-      std::cerr << "  Conflicts with: " << failure->error.conflicting_with
-                << "\n";
+        std::cerr << "kls: error: option '" << failure->error.option_name
+                  << "' conflicts with '" << failure->error.conflicting_with << "'\n";
     }
     std::cerr << "Run 'kls --help' for usage.\n";
-    return 2; // Invalid CLI
+    return 2;
   }
-
-  opts = std::get<kls::Success<kls::cli::model::ParsedOptions>>(validate_result)
-             .value;
+  opts = std::get<kls::Success<kls::cli::model::ParsedOptions>>(validate_result).value;
 
   // 3. Special Handlers
   if (opts.help) {
     kls::cli::executor::print_help();
     return 0;
   }
-
   if (opts.version) {
     std::cout << "kls " << KLS_VERSION << "\n";
     std::cout << "Copyright (C) 2026 NobelC\n";
@@ -65,28 +56,25 @@ int main(int argc, char *argv[]) {
 
   // Adapter
   auto scan_opts = kls::cli::adapter::to_scan_options(opts);
-
-
-  auto scan_result =
-      kls::auditor::audit_orchestrator(opts.target_path, scan_opts);
-  if (auto *failure =
-          std::get_if<kls::Failure<kls::scanner::ScanError>>(&scan_result)) {
-    std::cerr << "Audit failed at:" << failure->error.path << "\n";
+  auto scan_result = kls::auditor::audit_orchestrator(opts.target_path, scan_opts);
+  if (auto *failure = std::get_if<kls::Failure<kls::scanner::ScanError>>(&scan_result)) {
+    std::cerr << "kls: error: audit failed: " << failure->error.path << "\n";
     switch (failure->error.code) {
     case kls::scanner::ScanErrorCode::root_not_found:
-      std::cerr << " Path does not exist\n";
-      break;
+        std::cerr << "kls: error: path does not exist\n";
+        break;
     case kls::scanner::ScanErrorCode::root_not_directory:
-      std::cerr << " Path is not a is directory\n";
-      break;
+        std::cerr << "kls: error: path is not a directory\n";
+        break;
     case kls::scanner::ScanErrorCode::root_permission_denied:
-      std::cerr << " Permission denied\n";
-      break;
+        std::cerr << "kls: error: permission denied\n";
+        break;
     case kls::scanner::ScanErrorCode::root_open_failed:
-      std::cerr << " Failed to open path\n";
-      break;
+        std::cerr << "kls: error: failed to open path\n";
+        break;
     case kls::scanner::ScanErrorCode::unknown:
-      std::cerr << " Error unknown, good bless\n";
+        std::cerr << "kls: error: internal failure\n";
+        break;
     }
     return 4;
   }
