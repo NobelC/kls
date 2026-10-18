@@ -2,11 +2,11 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 build_root := "build"
 
-# Mostrar recetas disponibles.
+# Show available recipes.
 default:
     @just --list
 
-# Comprobar las herramientas del entorno.
+# Check environment tools.
 doctor:
     @printf '%-18s %s\n' "CMake" "$(cmake --version 2>/dev/null | head -1 || echo missing)"
     @printf '%-18s %s\n' "CTest" "$(ctest --version 2>/dev/null | head -1 || echo missing)"
@@ -19,8 +19,8 @@ doctor:
     @printf '%-18s %s\n' "clang-tidy" "$(command -v clang-tidy || echo optional-not-found)"
     @printf '%-18s %s\n' "perf" "$(command -v perf || echo optional-not-found)"
 
-# Configurar uno de estos perfiles:
-# debug, release, relwithdebinfo o minsizerel.
+# Configure one of these profiles:
+# debug, release, relwithdebinfo or minsizerel.
 configure profile="debug":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -39,8 +39,8 @@ configure profile="debug":
             build_type="MinSizeRel"
             ;;
         *)
-            printf 'Perfil desconocido: %s\n' "{{profile}}" >&2
-            printf 'Perfiles: debug, release, relwithdebinfo, minsizerel\n' >&2
+            printf 'Unknown profile: %s\n' "{{profile}}" >&2
+            printf 'Profiles: debug, release, relwithdebinfo, minsizerel\n' >&2
             exit 2
             ;;
     esac
@@ -58,12 +58,12 @@ configure profile="debug":
         ln -sfn "$build_dir/compile_commands.json" compile_commands.json
     fi
 
-# Configurar y compilar.
+# Configure and build.
 build profile="debug":
     just configure "{{profile}}"
     cmake --build "{{build_root}}/{{profile}}" --parallel
 
-# Ejecutar los tests registrados con CTest.
+# Run tests registered with CTest.
 test profile="debug":
     just build "{{profile}}"
     ctest \
@@ -71,7 +71,7 @@ test profile="debug":
         --output-on-failure \
         --parallel
 
-# Compilar y ejecutar el binario principal kls.
+# Build and run the main kls binary.
 run profile="debug":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -88,10 +88,10 @@ run profile="debug":
     )"
 
     if [[ -z "$executable" ]]; then
-        printf 'No se encontró el ejecutable kls en %s\n' \
+        printf 'kls executable not found in %s\n' \
             "{{build_root}}/{{profile}}" >&2
 
-        printf '\nEjecutables encontrados:\n' >&2
+        printf '\nFound executables:\n' >&2
 
         find "{{build_root}}/{{profile}}" \
             -type f \
@@ -103,15 +103,15 @@ run profile="debug":
 
     "$executable"
 
-# Compilación optimizada.
+# Optimized build.
 release:
     just build release
 
-# Compilación optimizada con símbolos para profiling.
+# Optimized build with symbols for profiling.
 profile:
     just build relwithdebinfo
 
-# AddressSanitizer y UndefinedBehaviorSanitizer.
+# AddressSanitizer and UndefinedBehaviorSanitizer.
 sanitize:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -137,13 +137,13 @@ sanitize:
         --output-on-failure \
         --parallel
 
-# Compilación instrumentada con clang-tidy.
+# Build instrumented with clang-tidy.
 tidy-build:
     #!/usr/bin/env bash
     set -euo pipefail
 
     command -v clang-tidy >/dev/null || {
-        printf 'clang-tidy no está instalado.\n' >&2
+        printf 'clang-tidy is not installed.\n' >&2
         exit 1
     }
 
@@ -159,13 +159,13 @@ tidy-build:
 
     cmake --build "$build_dir" --parallel
 
-# Formatear todos los archivos C y C++ del proyecto.
+# Format all C and C++ files in the project.
 format:
     #!/usr/bin/env bash
     set -euo pipefail
 
     command -v clang-format >/dev/null || {
-        printf 'clang-format no está instalado.\n' >&2
+        printf 'clang-format is not installed.\n' >&2
         exit 1
     }
 
@@ -184,19 +184,19 @@ format:
     )
 
     if (( ${#files[@]} == 0 )); then
-        printf 'No se encontraron archivos para formatear.\n'
+        printf 'No files found to format.\n'
         exit 0
     fi
 
     clang-format -i "${files[@]}"
 
-# Comprobar formato sin modificar archivos.
+# Check formatting without modifying files.
 format-check:
     #!/usr/bin/env bash
     set -euo pipefail
 
     command -v clang-format >/dev/null || {
-        printf 'clang-format no está instalado.\n' >&2
+        printf 'clang-format is not installed.\n' >&2
         exit 1
     }
 
@@ -215,7 +215,7 @@ format-check:
     )
 
     if (( ${#files[@]} == 0 )); then
-        printf 'No se encontraron archivos para comprobar.\n'
+        printf 'No files found to check.\n'
         exit 0
     fi
 
@@ -224,19 +224,19 @@ format-check:
         --Werror \
         "${files[@]}"
 
-# Validación habitual antes de hacer commit.
+# Standard validation before committing.
 check:
     just format-check
     just test debug
 
-# Instalar utilizando el prefijo indicado.
+# Install using the specified prefix.
 install prefix="$HOME/.local":
     just build release
     cmake \
         --install "{{build_root}}/release" \
         --prefix "{{prefix}}"
 
-# Eliminar builds y compile_commands.json.
+# Remove builds and compile_commands.json.
 clean:
     rm -rf "{{build_root}}"
     rm -f compile_commands.json

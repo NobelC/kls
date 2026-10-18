@@ -27,14 +27,20 @@ analyze_capability(const kls::auditor::AuditEntry &fe) {
 
   std::array<uint8_t, 64> buffer;
   std::memset(buffer.data(), 0, sizeof(buffer));
+  
+  // Read raw capability xattr. If absent or unreadable, no capability findings apply.
   ssize_t size = getxattr(std::string(fe.full_path).c_str(), XATTR_NAME_CAPS,
                           buffer.data(), sizeof(buffer));
 
   if (size <= 0) {
     return finding_entry;
   }
+  
   AddCapability(kls::detail::ID("CA01"));
 
+  // Parse kernel capability structure. 
+  // ARCHITECTURAL NOTE: We validate the version to prevent misinterpreting 
+  // malformed or future xattr formats, which could cause false positives.
   auto *cap_struct = reinterpret_cast<struct vfs_cap_data *>(buffer.data());
   uint32_t magic_etc = cap_struct->magic_etc;
   uint32_t version = magic_etc & VFS_CAP_REVISION_MASK;
@@ -50,6 +56,8 @@ analyze_capability(const kls::auditor::AuditEntry &fe) {
   uint64_t inheritable = ((uint64_t)cap_struct->data[1].inheritable << 32) |
                          cap_struct->data[0].inheritable;
 
+  // Explicitly check for specific dangerous capabilities. 
+  // This avoids blanket warnings on files that have the xattr but no actual privileges granted.
   if (permitted == 0 && inheritable == 0) {
     AddCapability(kls::detail::ID("CA35"));
   }
