@@ -22,8 +22,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-std::vector<std::pair<kls::detail::ID, std::string>>
-    collection_of_alerts_for_file;
+std::vector<std::pair<kls::detail::ID, std::string>> collection_of_alerts_for_file;
 
 std::string_view conversion_type_file(const kls::filesystem::FileType &type) {
   switch (type) {
@@ -95,8 +94,7 @@ std::string formated_perms(const mode_t &mode) {
   return perms_format;
 }
 
-std::string_view
-parser_severity_finding(const kls::findings::SeverityFindings &severity) {
+std::string_view parser_severity_finding(const kls::findings::SeverityFindings &severity) {
   switch (severity) {
   case kls::findings::SeverityFindings::None:
     return "NONE";
@@ -117,16 +115,14 @@ parser_severity_finding(const kls::findings::SeverityFindings &severity) {
     return "CRIT";
     break;
   }
+  return "UNK";
 }
 
 namespace kls::report {
 
-void render_report(std::ostream &output,
-                   const kls::scanner::ScanOutput &entries,
-                   const kls::report::RenderOptions &option_render) {
+void render_report(std::ostream &output,const kls::scanner::ScanOutput &entries,const kls::report::RenderOptions &option_render) {
 
   kls::platform::IdentityResolver Identity;
-  const auto maximum_name_width = option_render.maximum_name_width;
   if (entries.items.empty()) {
     return;
   }
@@ -139,7 +135,6 @@ void render_report(std::ostream &output,
 
   for (size_t i = 0; i < entries.items.size(); i++) {
     auto &actual_entry = entries.items[i].entry;
-    auto &actual_fiding = entries.items[i].findings;
     // 1. Perms (Mode)
     std::string perms = formated_perms(actual_entry.mode);
 
