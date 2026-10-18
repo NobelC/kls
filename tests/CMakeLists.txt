@@ -14,6 +14,8 @@ FetchContent_MakeAvailable(googletest)
 add_executable(kls_cli_tests
     cli/output_processor_test.cpp
     cli/min_severity_test.cpp
+    cli/registry_test.cpp
+
 )
 
 target_compile_options(kls_cli_tests PRIVATE -g)

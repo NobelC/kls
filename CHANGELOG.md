@@ -20,7 +20,7 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Target audit coverage and exit-code contracts.
 - Declarative CLI architecture with spec-based parser and validator
 - Output processor with filtering, sorting, and grouping capabilities
-- Constexpr finding registry with 12 capability findings and 33 health findings
+- Constexpr finding registry with 12 capability findings and 32 health findings
 - Constexpr whitelist for 13 standard system paths
 - Comprehensive unit tests for output processor
 - Modern ID class with constexpr support and default constructor

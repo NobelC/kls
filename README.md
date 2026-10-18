@@ -246,7 +246,7 @@ Initial architecture targets:
 - `AArch64`
 
 Artifacts should be published only after their architecture is covered by CI.
-Until release artifacts are available, build from source.
+*Note: While DEB and RPM packages are generated via CPack for convenience, they are considered experimental distributions without formal support guarantees until 1.0.0.*
 
 ### Build from source
 
