@@ -14,27 +14,22 @@
 
 namespace kls::scanner {
 
-[[nodiscard]]
-kls::scanner::ScanOutput collect_metadata(
-    const kls::scanner::DiscoveredOutput& discovered_output
-) {
-  ScanOutput final_output;
-  final_output.items.reserve(discovered_output.candidates.size());
+  [[nodiscard]] kls::scanner::ScanOutput collect_metadata(const kls::scanner::DiscoveredOutput& discovered_output) {
+    ScanOutput final_output;
+    final_output.items.reserve(discovered_output.candidates.size());
 
-  // Request birth time (btime) alongside basic stats. 
-  // Legacy `stat` cannot provide reliable creation time.
-  constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME;
+    // Request birth time (btime) alongside basic stats. 
+    // Legacy `stat` cannot provide reliable creation time.
+    constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME;
+    //These fields mandatory for security analysis
+    //If the filesystem omits them, the entry if flagged as incomplete, not assumed safe.
+    constexpr unsigned int required_mask = STATX_TYPE | STATX_MODE | STATX_INO | STATX_SIZE | STATX_NLINK | STATX_UID | STATX_GID | STATX_MTIME;
 
-  // These fields are mandatory for security analysis. 
-  // If the filesystem omits them, the entry is flagged as incomplete, not assumed safe.
-  constexpr unsigned int required_mask =
-      STATX_TYPE | STATX_MODE | STATX_INO | STATX_SIZE |
-      STATX_NLINK | STATX_UID | STATX_GID | STATX_MTIME;
 
-  std::string full_path;
-  full_path.reserve(PATH_MAX);
+    std::string full_path;
+    full_path.reserve(PATH_MAX);
 
-  for (const auto& candidate : discovered_output.candidates) {
+    for (const auto& candidate : discovered_output.candidates) {
     // Sanity check: Prevent out-of-bounds access on malformed discovery state.
     if (candidate.parent >= discovered_output.directory_paths.size()) {
       final_output.issues.emplace_back(ScanIssue{

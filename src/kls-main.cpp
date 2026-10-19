@@ -108,9 +108,19 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // 7. Coverage Check: Exit code 3 indicates an incomplete audit.
-  // A scan with issues (e.g., permission denied on subdirectories) is not a clean scan.
-  if (!scan_output.issues.empty()) {
+  // 7. Integrity Check: Exit code 3 indicates a compromised audit.
+  // We do not fail on expected environmental conditions (e.g., EACCES on subdirectories),
+  // only on integrity failures that invalidate the scan's trustworthiness.  
+  bool has_critical_issue = false;
+  for(const auto& issue : scan_output.issues){
+    if(issue.code == kls::scanner::ScanIssueCode::entry_identity_changed || issue.code == kls::scanner::ScanIssueCode::invalid_discovery_reference){
+      has_critical_issue = true;
+      break;
+    }
+  }
+    
+  if(has_critical_issue){
+    std::cerr << "kls: warning: audit completed with critical integrity issues.\n";
     return 3;
   }
 

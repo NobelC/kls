@@ -1,15 +1,13 @@
 #include "kls/scanner/scanner.hpp"
 #include "kls/result.hpp"
 #include "kls/scanner/collect_metadata.hpp"
+#include <iterator>
 #include <utility>
 #include <variant>
 
 namespace kls::scanner {
 
-// ARCHITECTURAL NOTE: Separation of concerns and fail-fast execution.
-// Directory discovery (readdir) is fast and cheap, while metadata collection (statx) 
-// is expensive due to syscall overhead. This orchestrator ensures we abort immediately 
-// if the root cannot be accessed, preventing wasted syscalls on a doomed traversal.
+
 [[nodiscard]] kls::scanner::ScanResult orchestrator(const std::string& root, const kls::scanner::ScanOptions& options) {
   DiscoveryResult discovery_result = discover_entries(root, options);
 
@@ -19,14 +17,22 @@ namespace kls::scanner {
     };
   }
 
+  // ARCHITECTURAL NOTE: Zero-copy read and deferred propagation.
+  // collect_metadata reads from DiscoveredOutput by const reference to avoid 
+  // copying large vectors (candidates, paths). 
+  // The orchestrator, as the owner of discovery_result, then moves the 
+  // discovery issues into the final output, ensuring efficient propagation.
   auto& success = std::get<kls::Success<DiscoveredOutput>>(discovery_result);
-  
-  // ARCHITECTURAL NOTE: Move semantics.
-  // DiscoveredOutput can contain large vectors of paths and candidates. 
-  // std::move transfers ownership to collect_metadata, avoiding expensive deep copies.
-  return ScanResult{
-      kls::Success<ScanOutput>{collect_metadata(std::move(success.value))}
-  };
+  auto collected = collect_metadata(success.value);
+  if(!success.value.issues.empty()){
+    collected.issues.insert(collected.issues.end(),
+                            std::make_move_iterator(success.value.issues.begin()),
+                            std::make_move_iterator(success.value.issues.end())
+    );
+    success.value.issues.clear();
+  }
+   
+  return ScanResult{kls::Success<kls::scanner::ScanOutput>{std::move(collected)}};
 }
 
 } // namespace kls::scanner
