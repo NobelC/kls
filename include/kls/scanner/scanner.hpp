@@ -86,6 +86,10 @@ struct DiscoveredOutput {
   std::vector<CandidateEntry> candidates;
   std::vector<std::string> target_symlink;
   std::vector<ScanIssue> issues;
+
+  std::size_t excluded_count = 0;
+  std::size_t visited_count = 0;
+  std::size_t discovered_count = 0;
 };
 
 struct AuditItem {
@@ -96,6 +100,11 @@ struct AuditItem {
 struct ScanOutput {
   std::vector<AuditItem> items;
   std::vector<ScanIssue> issues;
+  
+  std::size_t excluded_count = 0;
+  std::size_t visited_count = 0;
+  std::size_t discovered_count = 0;
+
 };
 
 using ScanResult = kls::Result<ScanOutput, ScanError>;

@@ -138,6 +138,7 @@ add_library(kls_analysis STATIC
     src/audit/audit_orchestrator.cpp
     src/analyzers/health_analyzer.cpp
     src/analyzers/capability_analyzer.cpp
+    src/audit/coverage_aggregator.cpp
 )
 
 target_include_directories(kls_analysis PUBLIC

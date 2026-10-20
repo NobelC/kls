@@ -24,14 +24,19 @@ namespace kls::scanner {
   // discovery issues into the final output, ensuring efficient propagation.
   auto& success = std::get<kls::Success<DiscoveredOutput>>(discovery_result);
   auto collected = collect_metadata(success.value);
+  collected.discovered_count = success.value.discovered_count;
+  collected.excluded_count = success.value.excluded_count;
+  collected.visited_count = success.value.visited_count;
+
   if(!success.value.issues.empty()){
     collected.issues.insert(collected.issues.end(),
                             std::make_move_iterator(success.value.issues.begin()),
                             std::make_move_iterator(success.value.issues.end())
     );
     success.value.issues.clear();
+    success.value.issues.shrink_to_fit(); //frees the heap memory immediately
   }
-   
+
   return ScanResult{kls::Success<kls::scanner::ScanOutput>{std::move(collected)}};
 }
 

@@ -1,5 +1,6 @@
 // src/kls-main.cpp
 #include "kls/audit/audit_orchestrator.hpp"
+#include "kls/audit/coverage_aggregator.hpp"
 #include "kls/cli/adapter/output_processor.hpp"
 #include "kls/cli/adapter/render_option_adapter.hpp"
 #include "kls/cli/adapter/scan_option_adapter.hpp"
@@ -91,7 +92,7 @@ int main(int argc, char *argv[]) {
   // 5. Process & Render: Apply user filters/sorting, then output the result.
   auto scan_output = std::get<kls::Success<kls::scanner::ScanOutput>>(scan_result).value;
   auto severity_counts = kls::cli::adapter::count_findings_by_severity(scan_output);
-  
+  auto coverage_report = kls::audit::coverage_aggregator(scan_output); 
   // Mutates scan_output in-place to apply filtering/sorting. 
   // Kept separate from rendering to allow future structured outputs (JSON/CSV) to reuse the same pipeline.
   kls::cli::adapter::process_output(scan_output, opts);
