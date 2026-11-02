@@ -1,7 +1,8 @@
 #include "kls/scanner/collect_metadata.hpp"
 #include "kls/audit/audit_entry.hpp"
-#include "kls/scanner/scanner.hpp"
 #include "kls/detail/file_type_conversion.hpp"
+#include "kls/scanner/scanner.hpp"
+#include <cerrno>
 #include <cstddef>
 #include <fcntl.h>
 #include <linux/limits.h>
@@ -10,26 +11,28 @@
 #include <string>
 #include <sys/stat.h>
 #include <system_error>
-#include <cerrno>
 
 namespace kls::scanner {
 
-  [[nodiscard]] kls::scanner::ScanOutput collect_metadata(const kls::scanner::DiscoveredOutput& discovered_output) {
-    ScanOutput final_output;
-    final_output.items.reserve(discovered_output.candidates.size());
+[[nodiscard]] kls::scanner::ScanOutput
+collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
+  ScanOutput final_output;
+  final_output.items.reserve(discovered_output.candidates.size());
 
-    // Request birth time (btime) alongside basic stats. 
-    // Legacy `stat` cannot provide reliable creation time.
-    constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME;
-    //These fields mandatory for security analysis
-    //If the filesystem omits them, the entry if flagged as incomplete, not assumed safe.
-    constexpr unsigned int required_mask = STATX_TYPE | STATX_MODE | STATX_INO | STATX_SIZE | STATX_NLINK | STATX_UID | STATX_GID | STATX_MTIME;
+  // Request birth time (btime) alongside basic stats.
+  // Legacy `stat` cannot provide reliable creation time.
+  constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME;
+  // These fields mandatory for security analysis
+  // If the filesystem omits them, the entry if flagged as incomplete, not
+  // assumed safe.
+  constexpr unsigned int required_mask = STATX_TYPE | STATX_MODE | STATX_INO |
+                                         STATX_SIZE | STATX_NLINK | STATX_UID |
+                                         STATX_GID | STATX_MTIME;
 
+  std::string full_path;
+  full_path.reserve(PATH_MAX);
 
-    std::string full_path;
-    full_path.reserve(PATH_MAX);
-
-    for (const auto& candidate : discovered_output.candidates) {
+  for (const auto &candidate : discovered_output.candidates) {
     // Sanity check: Prevent out-of-bounds access on malformed discovery state.
     if (candidate.parent >= discovered_output.directory_paths.size()) {
       final_output.issues.emplace_back(ScanIssue{
@@ -40,7 +43,8 @@ namespace kls::scanner {
       continue;
     }
 
-    const std::string& parent_path = discovered_output.directory_paths[candidate.parent];
+    const std::string &parent_path =
+        discovered_output.directory_paths[candidate.parent];
     full_path.clear();
     full_path.append(parent_path);
     if (!parent_path.empty() && !parent_path.ends_with('/')) {
@@ -65,26 +69,23 @@ namespace kls::scanner {
       result_entry.symlink_target = discovered_output.target_symlink[target_id];
     }
 
-    struct statx stx {};
+    struct statx stx{};
     errno = 0;
 
     // ARCHITECTURAL NOTE: AT_SYMLINK_NOFOLLOW is mandatory.
-    // We must inspect the symlink itself, not its target, to prevent 
+    // We must inspect the symlink itself, not its target, to prevent
     // accidental traversal outside the audit root or triggering side effects.
-    // TODO: Migrate to `dirfd` + `entry->d_name` instead of `AT_FDCWD` + `full_path` 
-    // to fully satisfy the descriptor-relative scanner requirement in ARCHITECTURE.md.
-    const int statx_result = ::statx(
-        AT_FDCWD,
-        full_path.c_str(),
-        AT_SYMLINK_NOFOLLOW,
-        requested_mask,
-        &stx
-    );
+    // TODO: Migrate to `dirfd` + `entry->d_name` instead of `AT_FDCWD` +
+    // `full_path` to fully satisfy the descriptor-relative scanner requirement
+    // in ARCHITECTURE.md.
+    const int statx_result = ::statx(AT_FDCWD, full_path.c_str(),
+                                     AT_SYMLINK_NOFOLLOW, requested_mask, &stx);
 
     if (statx_result == -1) {
       const int statx_error = errno;
       final_output.issues.emplace_back(ScanIssue{
-          .code = statx_error == ENOENT ? ScanIssueCode::entry_disappeared : ScanIssueCode::metadata_failed,
+          .code = statx_error == ENOENT ? ScanIssueCode::entry_disappeared
+                                        : ScanIssueCode::metadata_failed,
           .path = full_path,
           .system_error = {statx_error, std::generic_category()},
       });
@@ -103,9 +104,11 @@ namespace kls::scanner {
     }
 
     // TOCTOU Defense 1: Verify inode identity.
-    // If the inode changed between `readdir` and `statx`, the object was replaced.
-    // Discarding it prevents combining evidence from two different files.
-    if (candidate.discovered_inode && *candidate.discovered_inode != stx.stx_ino) {
+    // If the inode changed between `readdir` and `statx`, the object was
+    // replaced. Discarding it prevents combining evidence from two different
+    // files.
+    if (candidate.discovered_inode &&
+        *candidate.discovered_inode != stx.stx_ino) {
       final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::entry_identity_changed,
           .path = full_path,
@@ -120,7 +123,7 @@ namespace kls::scanner {
           .code = ScanIssueCode::metadata_incomplete,
           .path = full_path,
           .system_error = {},
-        });
+      });
       continue;
     }
 
@@ -143,7 +146,8 @@ namespace kls::scanner {
     result_entry.uid = stx.stx_uid;
     result_entry.gid = stx.stx_gid;
     result_entry.mtime = stx.stx_mtime.tv_sec;
-    result_entry.btime = (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
+    result_entry.btime =
+        (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
     result_entry.type = metadata_type;
 
     // Extract extension efficiently without allocation if possible.
@@ -153,10 +157,22 @@ namespace kls::scanner {
     }
 
     final_output.items.push_back({
-      .entry = std::move(result_entry),
-      .findings = {},
+        .entry = std::move(result_entry),
+        .findings = {},
     });
-  } 
+  }
+
+  if (!discovered_output.issues.empty()) {
+    final_output.issues.reserve(final_output.issues.size() +
+                                discovered_output.issues.empty());
+    final_output.issues.insert(final_output.issues.end(),
+                               discovered_output.issues.begin(),
+                               discovered_output.issues.end());
+  }
+
+  final_output.visited_count = discovered_output.visited_count;
+  final_output.discovered_count = discovered_output.discovered_count;
+  final_output.excluded_count = discovered_output.excluded_count;
 
   return final_output;
 }
