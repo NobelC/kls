@@ -63,6 +63,8 @@ enum class ScanIssueCode : std::uint8_t {
   symlink_target_truncated,
   symlink_loop,
   symlink_error_resolve,
+
+  pseudo_filesystem_excluded,
 };
 
 struct ScanIssue {
@@ -100,11 +102,10 @@ struct AuditItem {
 struct ScanOutput {
   std::vector<AuditItem> items;
   std::vector<ScanIssue> issues;
-  
+
   std::size_t excluded_count = 0;
   std::size_t visited_count = 0;
   std::size_t discovered_count = 0;
-
 };
 
 using ScanResult = kls::Result<ScanOutput, ScanError>;

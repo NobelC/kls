@@ -17,8 +17,21 @@
 #include <utility>
 
 namespace kls::scanner {
+constexpr std::array<std::string_view, 4> EXCLUDED_PREFIXES = {
+    {"/dev/", "/proc/", "/run/", "/sys/"}};
 
-// RAII wrapper for DIR*. Prevents file descriptor leaks on early returns or exceptions.
+[[nodiscard]] constexpr bool
+is_excluded_pseudo_filesystem(std::string_view path) noexcept {
+  for (const auto &prefix : EXCLUDED_PREFIXES) {
+    if (path.starts_with(prefix)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// RAII wrapper for DIR*. Prevents file descriptor leaks on early returns or
+// exceptions.
 struct DirDelete {
   void operator()(DIR *dir) const noexcept {
     if (dir) {
@@ -44,7 +57,8 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
 
   pending_directories.push(DirectoryRecord{.path = root, .depth = 0});
 
-  auto add_issue = [&](ScanIssueCode issues, const std::string &actual_path, int open_error) {
+  auto add_issue = [&](ScanIssueCode issues, const std::string &actual_path,
+                       int open_error) {
     scan_discovered_candidates.issues.emplace_back(
         ScanIssue{.code = issues,
                   .path = actual_path,
@@ -52,12 +66,12 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
   };
 
   // ARCHITECTURAL NOTE: BFS via std::queue.
-  // Prevents stack overflow on maliciously deep directory trees, ensuring 
+  // Prevents stack overflow on maliciously deep directory trees, ensuring
   // predictable memory usage and bounded traversal.
   while (!pending_directories.empty()) {
     auto actual_entry = std::move(pending_directories.front());
     pending_directories.pop();
-    
+
     errno = 0;
     DirPtr dir_ptr(::opendir(actual_entry.path.c_str()));
     int open_error = dir_ptr == nullptr ? errno : 0;
@@ -71,36 +85,51 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
             .system_error = {open_error, std::generic_category()}}};
       }
       if (open_error == ENOTDIR) {
-        return kls::Failure{ScanError{
-            .code = ScanErrorCode::root_not_directory,
-            .path = root,
-            .system_error = {open_error, std::generic_category()}}};
+        return kls::Failure{
+            ScanError{.code = ScanErrorCode::root_not_directory,
+                      .path = root,
+                      .system_error = {open_error, std::generic_category()}}};
       }
       if (open_error == EACCES) {
-        return kls::Failure{ScanError{
-            .code = ScanErrorCode::root_permission_denied,
-            .path = root,
-            .system_error = {open_error, std::generic_category()}}};
+        return kls::Failure{
+            ScanError{.code = ScanErrorCode::root_permission_denied,
+                      .path = root,
+                      .system_error = {open_error, std::generic_category()}}};
       }
-      return kls::Failure{ScanError{
-          .code = ScanErrorCode::root_open_failed,
-          .path = root,
-          .system_error = {open_error, std::generic_category()}}};
+      return kls::Failure{
+          ScanError{.code = ScanErrorCode::root_open_failed,
+                    .path = root,
+                    .system_error = {open_error, std::generic_category()}}};
     }
 
-    // Subdirectory failures are coverage gaps (ScanIssue), allowing the audit to continue.
+    // Subdirectory failures are coverage gaps (ScanIssue), allowing the audit
+    // to continue.
     if (!dir_ptr) {
-      if (open_error == EACCES) {add_issue(ScanIssueCode::directory_permission_denied, actual_entry.path, open_error);}
-      else if (open_error == ENOENT) {add_issue(ScanIssueCode::entry_disappeared, actual_entry.path, open_error);}
-      else if (open_error == ENOTDIR) {add_issue(ScanIssueCode::entry_type_changed, actual_entry.path, open_error);}
-      else if (open_error == EMFILE) {add_issue(ScanIssueCode::descriptor_limited, actual_entry.path, open_error);}
-      else if (open_error == ENFILE) {add_issue(ScanIssueCode::global_limited, actual_entry.path, open_error);}
-      else if (open_error == EIO) {add_issue(ScanIssueCode::io_error, actual_entry.path, open_error);}
-      else {add_issue(ScanIssueCode::directory_open_failed, actual_entry.path, open_error);}
+      if (open_error == EACCES) {
+        add_issue(ScanIssueCode::directory_permission_denied, actual_entry.path,
+                  open_error);
+      } else if (open_error == ENOENT) {
+        add_issue(ScanIssueCode::entry_disappeared, actual_entry.path,
+                  open_error);
+      } else if (open_error == ENOTDIR) {
+        add_issue(ScanIssueCode::entry_type_changed, actual_entry.path,
+                  open_error);
+      } else if (open_error == EMFILE) {
+        add_issue(ScanIssueCode::descriptor_limited, actual_entry.path,
+                  open_error);
+      } else if (open_error == ENFILE) {
+        add_issue(ScanIssueCode::global_limited, actual_entry.path, open_error);
+      } else if (open_error == EIO) {
+        add_issue(ScanIssueCode::io_error, actual_entry.path, open_error);
+      } else {
+        add_issue(ScanIssueCode::directory_open_failed, actual_entry.path,
+                  open_error);
+      }
       continue;
     }
 
-    // Build absolute path for reporting, but keep operations directory-relative.
+    // Build absolute path for reporting, but keep operations
+    // directory-relative.
     full_path.append(actual_entry.path);
     if (full_path.empty() || full_path.back() != '/') {
       full_path.append("/");
@@ -116,13 +145,14 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
 
       if (entry == nullptr) {
         if (open_error != 0) {
-          add_issue(ScanIssueCode::directory_read_failed, actual_entry.path, open_error);
+          add_issue(ScanIssueCode::directory_read_failed, actual_entry.path,
+                    open_error);
         }
         break;
       }
 
       std::string temp_name(entry->d_name);
-      if (temp_name == "." || temp_name == ".."){
+      if (temp_name == "." || temp_name == "..") {
         continue;
       }
       if (!options.include_hidden && temp_name.starts_with('.')) {
@@ -133,7 +163,7 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       type_correct = detail::type_from_dirent(entry->d_type);
 
       // ARCHITECTURAL NOTE: Fallback to statx.
-      // Some filesystems (e.g., older network FS) return DT_UNKNOWN. 
+      // Some filesystems (e.g., older network FS) return DT_UNKNOWN.
       // Using dirfd + AT_SYMLINK_NOFOLLOW prevents TOCTOU and symlink escapes.
       if (type_correct == filesystem::FileType::unknown) {
         errno = 0;
@@ -144,7 +174,8 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
         if (result_statx == -1 || (stx.stx_mask & STATX_TYPE) == 0) {
           open_error = errno;
           full_path.append(temp_name);
-          add_issue(ScanIssueCode::entry_type_detection_failed, full_path, open_error);
+          add_issue(ScanIssueCode::entry_type_detection_failed, full_path,
+                    open_error);
           full_path.resize(base_len);
           continue;
         }
@@ -162,26 +193,41 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       if (type_correct == filesystem::FileType::directory &&
           options.recursive && actual_entry.depth < options.maximum_depth) {
         full_path.append("/");
-        pending_directories.push({.path = full_path, .depth = actual_entry.depth + 1});
+
+        if (is_excluded_pseudo_filesystem(full_path)) {
+          scan_discovered_candidates.excluded_count++;
+          add_issue(ScanIssueCode::pseudo_filesystem_excluded, full_path, 0);
+          full_path.resize(base_len);
+          continue;
+        }
+        pending_directories.push(
+            {.path = full_path, .depth = actual_entry.depth + 1});
       }
 
       // ARCHITECTURAL NOTE: Directory-relative symlink resolution.
-      // readlinkat with dirfd ensures we resolve the link exactly where it was found,
-      // avoiding race conditions if the parent directory is swapped mid-scan.
+      // readlinkat with dirfd ensures we resolve the link exactly where it was
+      // found, avoiding race conditions if the parent directory is swapped
+      // mid-scan.
       std::optional<std::size_t> target_id = std::nullopt;
-      if (type_correct == filesystem::FileType::symlink && options.symlink_status == SymlinkMode::read) {
+      if (type_correct == filesystem::FileType::symlink &&
+          options.symlink_status == SymlinkMode::read) {
         errno = 0;
         std::array<char, PATH_MAX> buffer;
-        ssize_t resolve_symlink = readlinkat(::dirfd(dir_ptr.get()), entry->d_name, buffer.data(), sizeof(buffer));
+        ssize_t resolve_symlink =
+            readlinkat(::dirfd(dir_ptr.get()), entry->d_name, buffer.data(),
+                       sizeof(buffer));
         open_error = resolve_symlink == -1 ? errno : 0;
 
         if (open_error != 0 || resolve_symlink == -1) {
-          add_issue(ScanIssueCode::symlink_error_resolve, full_path, open_error);
+          add_issue(ScanIssueCode::symlink_error_resolve, full_path,
+                    open_error);
         } else if (static_cast<std::size_t>(resolve_symlink) == buffer.size()) {
-          add_issue(ScanIssueCode::symlink_target_truncated, full_path, open_error);
+          add_issue(ScanIssueCode::symlink_target_truncated, full_path,
+                    open_error);
         } else {
           auto index_target = scan_discovered_candidates.target_symlink.size();
-          scan_discovered_candidates.target_symlink.emplace_back(buffer.data(), static_cast<std::size_t>(resolve_symlink));
+          scan_discovered_candidates.target_symlink.emplace_back(
+              buffer.data(), static_cast<std::size_t>(resolve_symlink));
           target_id = index_target;
         }
       }
@@ -189,16 +235,19 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       scan_discovered_candidates.candidates.emplace_back(CandidateEntry{
           .name = std::move(temp_name),
           .parent = directory_id,
-          .discovered_inode = entry->d_ino == 0 ? std::nullopt : std::optional<std::uint64_t>(entry->d_ino),
+          .discovered_inode = entry->d_ino == 0
+                                  ? std::nullopt
+                                  : std::optional<std::uint64_t>(entry->d_ino),
           .discovered_type = type_correct,
           .target_symlink_id = target_id});
-      
+
       full_path.resize(base_len);
     }
     full_path.clear();
   }
 
-  return kls::Success<kls::scanner::DiscoveredOutput>{std::move(scan_discovered_candidates)};
+  return kls::Success<kls::scanner::DiscoveredOutput>{
+      std::move(scan_discovered_candidates)};
 }
 
 } // namespace kls::scanner

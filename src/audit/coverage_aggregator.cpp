@@ -37,7 +37,12 @@ coverage_aggregator(kls::scanner::ScanOutput &scan_output) {
     } else if (issue.code == scanner::ScanIssueCode::directory_open_failed) {
       // Generic open failures (non-EACCES) are counted as skipped.
       report.skipped++;
+    } else if (issue.code ==
+               scanner::ScanIssueCode::pseudo_filesystem_excluded) {
+      // Already counted via excluded_count, no double-counting needed.
+      // This branch is intentionally empty but documented for clarity.
     }
+
     // Note: symlink errors and invalid references are logged in issues
     // but do not directly increment these high-level coverage counters.
   }
