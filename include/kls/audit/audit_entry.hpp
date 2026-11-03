@@ -26,6 +26,13 @@ struct AuditEntry {
   std::string full_path;
   std::optional<std::string> symlink_target = std::nullopt;
   std::string extension;
+
+  // Mount identity for cross-filesystem tracking.
+  //  stx_dev_major and stx_dev_minor identify the device.
+  //  mount_id (Linux 5.8+) identifies the specific mount point.
+  std::uint32_t dev_major = 0;
+  std::uint32_t dev_minor = 0;
+  std::optional<std::uint64_t> mount_id = std::nullopt;
 };
 
 } // namespace kls::auditor

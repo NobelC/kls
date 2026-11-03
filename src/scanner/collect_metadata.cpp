@@ -21,7 +21,12 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
 
   // Request birth time (btime) alongside basic stats.
   // Legacy `stat` cannot provide reliable creation time.
-  constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME;
+  constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME
+#ifdef STATX_MNT_ID
+                                          | STATX_MNT_ID
+
+#endif // STATX_MNT_ID
+      ;
   // These fields mandatory for security analysis
   // If the filesystem omits them, the entry if flagged as incomplete, not
   // assumed safe.
@@ -150,6 +155,17 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
         (stx.stx_mask & STATX_BTIME) ? stx.stx_btime.tv_sec : 0;
     result_entry.type = metadata_type;
 
+    // Capture mount identity for cross-filesystem tracking
+    result_entry.dev_major = stx.stx_dev_major;
+    result_entry.dev_minor = stx.stx_dev_minor;
+
+#ifdef STATX_MNT_ID
+    if (stx.stx_mask & STATX_MNT_ID) {
+      result_entry.mount_id = stx.stx_mnt_id;
+    }
+
+#endif // STX_MNT_ID
+
     // Extract extension efficiently without allocation if possible.
     if (const std::size_t dot_position = candidate.name.find_last_of('.');
         dot_position != std::string::npos && dot_position > 0) {
@@ -164,7 +180,7 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
 
   if (!discovered_output.issues.empty()) {
     final_output.issues.reserve(final_output.issues.size() +
-                                discovered_output.issues.empty());
+                                discovered_output.issues.size());
     final_output.issues.insert(final_output.issues.end(),
                                discovered_output.issues.begin(),
                                discovered_output.issues.end());

@@ -65,6 +65,7 @@ enum class ScanIssueCode : std::uint8_t {
   symlink_error_resolve,
 
   pseudo_filesystem_excluded,
+  mount_point_crossed,
 };
 
 struct ScanIssue {
@@ -81,6 +82,8 @@ struct CandidateEntry {
   std::optional<std::uint64_t> discovered_inode = std::nullopt;
   filesystem::FileType discovered_type = filesystem::FileType::unknown;
   std::optional<std::size_t> target_symlink_id = std::nullopt;
+  std::uint32_t discovered_dev_major = 0;
+  std::uint32_t discovered_dev_minor = 0;
 };
 
 struct DiscoveredOutput {

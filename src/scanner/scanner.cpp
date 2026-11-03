@@ -194,12 +194,26 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
           options.recursive && actual_entry.depth < options.maximum_depth) {
         full_path.append("/");
 
+        // Exclude pseudo-filesystems by default.
         if (is_excluded_pseudo_filesystem(full_path)) {
           scan_discovered_candidates.excluded_count++;
           add_issue(ScanIssueCode::pseudo_filesystem_excluded, full_path, 0);
           full_path.resize(base_len);
           continue;
         }
+
+        // Detect mount point crossings.
+        // Compare device ID of child directory with parent to identify
+        // cross-mount traversal.
+        struct statx stx_child{};
+        if (::statx(::dirfd(dir_ptr.get()), entry->d_name, AT_SYMLINK_NOFOLLOW,
+                    STATX_TYPE | STATX_MNT_ID, &stx_child) == 0) {
+          scan_discovered_candidates.candidates.back().discovered_dev_major =
+              stx_child.stx_dev_major;
+          scan_discovered_candidates.candidates.back().discovered_dev_minor =
+              stx_child.stx_dev_minor;
+        }
+
         pending_directories.push(
             {.path = full_path, .depth = actual_entry.depth + 1});
       }
