@@ -24,8 +24,9 @@ struct ScanOptions {
   bool include_hidden = false;
   bool analyze_health = false;
   bool analyze_capabilities = false;
-  SymlinkMode symlink_status = SymlinkMode::ignore;
+  SymlinkMode symlink_status = SymlinkMode::read;
   std::size_t maximum_depth = std::numeric_limits<std::size_t>::max();
+  std::string audit_root;
 };
 
 enum class ScanErrorCode : uint8_t {

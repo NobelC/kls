@@ -85,7 +85,7 @@ add_library(kls_cli STATIC
     src/cli/validator/cli_validator.cpp
     src/cli/executor/help_formatter.cpp  
     src/cli/adapter/scan_options_adapter.cpp 
-    src/cli/adapter/render_option_adapter.cpp  
+    src/cli/adapter/render_option_adapter.cpp
     src/cli/adapter/output_processor.cpp
     src/cli/spec/cli_spec_definition.cpp
     src/cli/adapter/severity_count.cpp
@@ -105,6 +105,7 @@ set(CORE_SOURCES
     src/platform/unique_fd.cpp
     src/platform/identity_resolver.cpp
     src/report/render_report.cpp
+    src/report/render_coverage.cpp
 )
 
 add_library(kls_core STATIC ${CORE_SOURCES})
@@ -135,6 +136,7 @@ target_include_directories(kls_scanner PUBLIC
 # ==============================================================================
 add_library(kls_analysis STATIC
     src/analyzers/analyzer_entries.cpp
+    src/analyzers/symlink_analyzer.cpp 
     src/audit/audit_orchestrator.cpp
     src/analyzers/health_analyzer.cpp
     src/analyzers/capability_analyzer.cpp

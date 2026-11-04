@@ -130,6 +130,7 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
 
     // Build absolute path for reporting, but keep operations
     // directory-relative.
+    scan_discovered_candidates.visited_count++;
     full_path.append(actual_entry.path);
     if (full_path.empty() || full_path.back() != '/') {
       full_path.append("/");
@@ -158,6 +159,7 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
       if (!options.include_hidden && temp_name.starts_with('.')) {
         continue;
       }
+      scan_discovered_candidates.discovered_count++;
 
       filesystem::FileType type_correct = filesystem::FileType::unknown;
       type_correct = detail::type_from_dirent(entry->d_type);
@@ -190,6 +192,8 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
 
       full_path.append(temp_name);
 
+      std::uint32_t dev_major = 0;
+      std::uint32_t dev_minor = 0;
       if (type_correct == filesystem::FileType::directory &&
           options.recursive && actual_entry.depth < options.maximum_depth) {
         full_path.append("/");
@@ -208,10 +212,8 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
         struct statx stx_child{};
         if (::statx(::dirfd(dir_ptr.get()), entry->d_name, AT_SYMLINK_NOFOLLOW,
                     STATX_TYPE | STATX_MNT_ID, &stx_child) == 0) {
-          scan_discovered_candidates.candidates.back().discovered_dev_major =
-              stx_child.stx_dev_major;
-          scan_discovered_candidates.candidates.back().discovered_dev_minor =
-              stx_child.stx_dev_minor;
+          dev_major = stx_child.stx_dev_major;
+          dev_minor = stx_child.stx_dev_minor;
         }
 
         pending_directories.push(
@@ -253,7 +255,9 @@ kls::scanner::DiscoveryResult discover_entries(const std::string &root,
                                   ? std::nullopt
                                   : std::optional<std::uint64_t>(entry->d_ino),
           .discovered_type = type_correct,
-          .target_symlink_id = target_id});
+          .target_symlink_id = target_id,
+          .discovered_dev_major = dev_major,
+          .discovered_dev_minor = dev_minor});
 
       full_path.resize(base_len);
     }
