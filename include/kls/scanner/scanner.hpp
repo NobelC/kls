@@ -81,13 +81,25 @@ using IDDirectory = std::size_t;
 struct CandidateEntry {
   std::string name;
   IDDirectory parent = 0;
-  std::optional<std::uint64_t> discovered_inode = std::nullopt;
-  filesystem::FileType discovered_type = filesystem::FileType::unknown;
-  std::optional<std::size_t> target_symlink_id = std::nullopt;
-  std::uint32_t discovered_dev_major = 0;
-  std::uint32_t discovered_dev_minor = 0;
-};
+  std::string full_path;
 
+  std::uint64_t inode = 0;
+  std::uint64_t size = 0;
+  mode_t mode = 0;
+  nlink_t nlinks = 0;
+  uid_t uid = 0;
+  gid_t gid = 0;
+  time_t mtime = 0;
+  time_t btime = 0;
+  filesystem::FileType type = filesystem::FileType::unknown;
+  std::string extension;
+
+  std::optional<std::string> symlink_target = std::nullopt;
+
+  std::uint32_t dev_major = 0;
+  std::uint32_t dev_minor = 0;
+  std::optional<std::uint64_t> mount_id = std::nullopt;
+};
 struct DiscoveredOutput {
   std::vector<std::string> directory_paths;
   std::vector<CandidateEntry> candidates;
