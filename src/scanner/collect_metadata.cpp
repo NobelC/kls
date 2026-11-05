@@ -19,17 +19,12 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
   ScanOutput final_output;
   final_output.items.reserve(discovered_output.candidates.size());
 
-  // Request birth time (btime) alongside basic stats.
-  // Legacy `stat` cannot provide reliable creation time.
   constexpr unsigned int requested_mask = STATX_BASIC_STATS | STATX_BTIME
 #ifdef STATX_MNT_ID
                                           | STATX_MNT_ID
-
-#endif // STATX_MNT_ID
+#endif
       ;
-  // These fields mandatory for security analysis
-  // If the filesystem omits them, the entry if flagged as incomplete, not
-  // assumed safe.
+
   constexpr unsigned int required_mask = STATX_TYPE | STATX_MODE | STATX_INO |
                                          STATX_SIZE | STATX_NLINK | STATX_UID |
                                          STATX_GID | STATX_MTIME;
@@ -38,8 +33,8 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
   full_path.reserve(PATH_MAX);
 
   for (const auto &candidate : discovered_output.candidates) {
-    // Sanity check: Prevent out-of-bounds access on malformed discovery state.
-    if (candidate.parent >= discovered_output.directory_paths.size()) {
+    // Sanity check: Prevent out-of-bounds access
+    if (candidate.parent >= discovered_output.directory_fds.size()) {
       final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::invalid_discovery_reference,
           .path = candidate.name,
@@ -48,6 +43,10 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
       continue;
     }
 
+    // Retrieve parent directory descriptor
+    int parent_fd = discovered_output.directory_fds[candidate.parent].get();
+
+    // Build display path for reports (not used as object handle)
     const std::string &parent_path =
         discovered_output.directory_paths[candidate.parent];
     full_path.clear();
@@ -77,13 +76,10 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
     struct statx stx{};
     errno = 0;
 
-    // ARCHITECTURAL NOTE: AT_SYMLINK_NOFOLLOW is mandatory.
-    // We must inspect the symlink itself, not its target, to prevent
-    // accidental traversal outside the audit root or triggering side effects.
-    // TODO: Migrate to `dirfd` + `entry->d_name` instead of `AT_FDCWD` +
-    // `full_path` to fully satisfy the descriptor-relative scanner requirement
-    // in ARCHITECTURE.md.
-    const int statx_result = ::statx(AT_FDCWD, full_path.c_str(),
+    // Descriptor-relative statx.
+    // Use parent_fd + candidate.name instead of AT_FDCWD + full_path.
+    // This eliminates TOCTOU vulnerabilities from path replacement attacks.
+    const int statx_result = ::statx(parent_fd, candidate.name.c_str(),
                                      AT_SYMLINK_NOFOLLOW, requested_mask, &stx);
 
     if (statx_result == -1) {
@@ -97,8 +93,6 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
       continue;
     }
 
-    // Filesystem robustness: Network or exotic filesystems may omit fields.
-    // We explicitly check the mask rather than trusting uninitialized memory.
     if ((stx.stx_mask & required_mask) != required_mask) {
       final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::metadata_incomplete,
@@ -108,10 +102,7 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
       continue;
     }
 
-    // TOCTOU Defense 1: Verify inode identity.
-    // If the inode changed between `readdir` and `statx`, the object was
-    // replaced. Discarding it prevents combining evidence from two different
-    // files.
+    // TOCTOU Defense 1: Verify inode identity
     if (candidate.discovered_inode &&
         *candidate.discovered_inode != stx.stx_ino) {
       final_output.issues.emplace_back(ScanIssue{
@@ -132,8 +123,7 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
       continue;
     }
 
-    // TOCTOU Defense 2: Verify file type consistency.
-    // A type change (e.g., file became a symlink) indicates a race condition.
+    // TOCTOU Defense 2: Verify file type consistency
     if (candidate.discovered_type != metadata_type) {
       final_output.issues.emplace_back(ScanIssue{
           .code = ScanIssueCode::entry_type_changed,
@@ -143,7 +133,7 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
       continue;
     }
 
-    // Map validated metadata to the domain model.
+    // Map validated metadata to the domain model
     result_entry.inode = stx.stx_ino;
     result_entry.size = stx.stx_size;
     result_entry.mode = stx.stx_mode;
@@ -163,10 +153,8 @@ collect_metadata(const kls::scanner::DiscoveredOutput &discovered_output) {
     if (stx.stx_mask & STATX_MNT_ID) {
       result_entry.mount_id = stx.stx_mnt_id;
     }
+#endif
 
-#endif // STX_MNT_ID
-
-    // Extract extension efficiently without allocation if possible.
     if (const std::size_t dot_position = candidate.name.find_last_of('.');
         dot_position != std::string::npos && dot_position > 0) {
       result_entry.extension = candidate.name.substr(dot_position);

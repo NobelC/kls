@@ -2,6 +2,7 @@
 #include "kls/audit/audit_entry.hpp"
 #include "kls/detail/Id.hpp"
 #include "kls/filesystem/file_type.hpp"
+#include "kls/platform/unique_fd.hpp"
 #include "kls/result.hpp"
 #include <cstddef>
 #include <cstdint>
@@ -92,6 +93,7 @@ struct DiscoveredOutput {
   std::vector<CandidateEntry> candidates;
   std::vector<std::string> target_symlink;
   std::vector<ScanIssue> issues;
+  std::vector<kls::platform::UniqueFd> directory_fds;
 
   std::size_t excluded_count = 0;
   std::size_t visited_count = 0;
