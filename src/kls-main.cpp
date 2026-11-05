@@ -85,18 +85,23 @@ int main(int argc, char *argv[]) {
     switch (failure->error.code) {
     case kls::scanner::ScanErrorCode::root_not_found:
       std::cerr << "kls: error: path does not exist\n";
+      return 2;
       break;
     case kls::scanner::ScanErrorCode::root_not_directory:
       std::cerr << "kls: error: path is not a directory\n";
+      return 2;
       break;
     case kls::scanner::ScanErrorCode::root_permission_denied:
       std::cerr << "kls: error: permission denied\n";
+      return 3;
       break;
     case kls::scanner::ScanErrorCode::root_open_failed:
-      std::cerr << "kls: error: failed to open path\n";
+      std::cerr << "kls: error: failed to open path (I/O error)\n";
+      return 3;
       break;
     case kls::scanner::ScanErrorCode::unknown:
       std::cerr << "kls: error: internal failure\n";
+      return 4;
       break;
     }
     return 4;
