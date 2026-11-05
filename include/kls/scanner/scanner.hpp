@@ -103,7 +103,6 @@ struct CandidateEntry {
 struct DiscoveredOutput {
   std::vector<std::string> directory_paths;
   std::vector<CandidateEntry> candidates;
-  std::vector<std::string> target_symlink;
   std::vector<ScanIssue> issues;
   std::vector<kls::platform::UniqueFd> directory_fds;
 
